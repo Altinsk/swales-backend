@@ -1,0 +1,119 @@
+const nodemailer = require("nodemailer");
+const dotenv = require("dotenv");
+const { Resend } = require("resend");
+dotenv.config();
+
+// Initialize Resend with env variable for security
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// --- CONFIGURATION ---
+// Replace these URLs with your actual asset links
+const COMPANY_NAME = "Swales";
+const LOGO_URL = "https://garden-desinger.vercel.app/logo.png"; // Replace with your hosted logo
+const TWITTER_URL = "https://twitter.com";
+const INSTAGRAM_URL = "https://instagram.com";
+const WEBSITE_URL = process.env.BASE_URL || "https://yourwebsite.com";
+
+// --- STYLING & TEMPLATE HELPER ---
+const getEmailTemplate = (heading, message, buttonText, buttonUrl) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${heading}</title>
+      <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f7; color: #333333; margin: 0; padding: 0; }
+        .container { width: 100%; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .email-card { background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background-color: #ffffffff; text-align: center; }
+        .logo { max-height: 95px; }
+        .content { padding: 30px 20px; }
+        .h1 { font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #333333; }
+        .text { font-size: 16px; line-height: 1.6; color: #555555; margin-bottom: 20px; }
+        .btn-container { text-align: center; margin: 30px 0; }
+        .btn { background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; }
+        .btn:hover { background-color: #0056b3; }
+        .footer { text-align: center; font-size: 12px; color: #999999; margin-top: 20px; padding-bottom: 20px; }
+        .social-links { margin-bottom: 10px; }
+        .social-links a { color: #999999; text-decoration: none; margin: 0 5px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="email-card">
+          <div class="header">
+            <img src="${LOGO_URL}" alt="${COMPANY_NAME}" class="logo" style="color: white;">
+          </div>
+          
+          <div class="content">
+            <h1 class="h1">${heading}</h1>
+            <p class="text">${message}</p>
+            
+            <div class="btn-container">
+              <a href="${buttonUrl}" class="btn" style="color:white" target="_blank">${buttonText}</a>
+            </div>
+
+            <p class="text" style="font-size: 14px; color: #999;">
+              If the button above doesn't work, copy and paste this link into your browser:<br>
+              <a href="${buttonUrl}" style="color: #007bff;">${buttonUrl}</a>
+            </p>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="social-links">
+            <a href="${TWITTER_URL}">Twitter</a> • 
+            <a href="${INSTAGRAM_URL}">Instagram</a> • 
+            <a href="${WEBSITE_URL}">Facebook</a>
+          </div>
+          <p>&copy; ${new Date().getFullYear()} ${COMPANY_NAME}. All rights reserved.</p>
+      
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+// --- EXPORTED FUNCTIONS ---
+
+exports.sendVerificationEmail = async (email, token, src = "swales") => {
+  const url = `${process.env.BASE_URL}/api/auth/verify-email/${src}/${token}`;
+
+  const htmlContent = getEmailTemplate(
+    "Verify your Email Address",
+    "Welcome to Swales! Please verify your email address to get started. This link will expire in 24 hours.",
+    "Verify Email",
+    url
+  );
+
+  await resend.emails.send({
+    from: "no-reply@swales.app", // Update this to your verified domain later (e.g., support@swales.com)
+    to: email,
+    subject: "Verify your Email",
+    html: htmlContent,
+  });
+};
+
+exports.sendResetPasswordEmail = async (email, token, source = "swales") => {
+  const url =
+    source == "swales"
+      ? `${process.env.SWALES_APP_URL}/reset-password?token=${token}`
+      : `${process.env.DESIGNER_APP_URL}/reset-password?token=${token}`;
+
+  const htmlContent = getEmailTemplate(
+    "Reset your Password",
+    "We received a request to reset your password. If you didn't make this request, you can safely ignore this email.",
+    "Reset Password",
+    url
+  );
+
+  await resend.emails.send({
+    from: "no-reply@swales.app",
+    to: email,
+    subject: "Reset Password",
+    html: htmlContent,
+  });
+};
