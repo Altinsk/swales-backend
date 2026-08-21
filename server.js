@@ -1,6 +1,8 @@
 // server.js
-const express = require("express");
 const dotenv = require("dotenv");
+dotenv.config();
+
+const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const authRoutes = require("./routes/authRoutes");
@@ -13,7 +15,6 @@ const path = require("path");
 const db = require("./models");
 const axios = require("axios");
 
-dotenv.config();
 const app = express();
 
 // --- 1. CORS CONFIGURATION ---
