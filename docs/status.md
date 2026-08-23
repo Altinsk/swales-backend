@@ -88,6 +88,30 @@ this was sorted out — read them as "this repo," not literally `back`.
   production — worth a small cleanup later. Future schema changes now go
   through `npm run migration:generate -- <name>` + review + `npm run migrate`.
 
+- **`.env` hygiene pass — Done (2026-08-23).** Cross-checked every
+  `process.env.*` reference in code against each repo's `.env`/`.env.local`
+  in all three repos and added a `.env.example` to each documenting what's
+  actually required. Real findings: `swales-backend`'s `DB_HOST`/`DB_NAME`/
+  `DB_USER`/`DB_PASS` and `config/database.js` are dead code (`DATABASE_URL`
+  always wins in `models/index.js`, and nothing requires
+  `config/database.js`); `EMAIL_USER`/`EMAIL_PASS`/`Password_Reset_Url`/
+  `Email_verify_Url`/`AllowedOrigins` are unused leftovers (nodemailer is
+  imported but never called — Resend replaced it; CORS origins are
+  hardcoded in `server.js`). `swales-designer` and `swales-services` were
+  both missing `NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10` locally (only
+  `_CUSTOM` was set — the donation preset buttons resolve to `undefined`
+  without them). `swales-services` was also missing `WEATHER_API_KEY2`,
+  `NEXT_PUBLIC_SUPPORT_LINK`, and 4 `NEXT_PUBLIC_CARTO_WRI_MAP_TILE_URL`
+  vars referenced in code. Confirmed no `.env`/`.env.local` file is
+  currently tracked or gitignore-leaking in any of the 3 repos. One
+  historical finding, already resolved: `swales-services` had a real
+  `.env.local` committed to git history on 2025-04-23 (`c6ae545`), later
+  untracked — every secret in it (`GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`,
+  etc.) has since been rotated and no longer matches current values, so no
+  live exposure; left git history as-is rather than a disruptive rewrite
+  for already-dead secrets. Shipped directly to `main` in all 3 repos
+  (docs/config-only change, no branch/PR).
+
 ## In progress / decided but not yet done
 
 - Repo consolidation into a GitHub Organization — discussed, not decided.
@@ -99,3 +123,12 @@ this was sorted out — read them as "this repo," not literally `back`.
 
 1. Decide the repo-consolidation question, or explicitly defer it.
 2. Small cleanup: dedupe `Users.Email` unique constraints in production.
+3. Decide on the env-var gaps the hygiene pass surfaced: set the missing
+   `NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10` (designer + services),
+   `WEATHER_API_KEY2`, `NEXT_PUBLIC_SUPPORT_LINK`, and the 4
+   `NEXT_PUBLIC_CARTO_WRI_MAP_TILE_URL` vars (services) if those features
+   are meant to be live — or confirm they're intentionally incomplete.
+4. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
+   `DB_PASS`/`config/database.js` and the unused `EMAIL_USER`/`EMAIL_PASS`/
+   `Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins` vars from
+   `swales-backend` — flagged, not removed, during the hygiene pass.
