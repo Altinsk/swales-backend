@@ -73,6 +73,42 @@ jobs:
           NODE_ENV: production
           DATABASE_URL: ${{ steps.create_neon_branch.outputs.db_url_pooled }}
 
+      - name: Point this PR's Vercel Preview at the new branch
+        # Scopes a DATABASE_URL override to Preview deployments built from
+        # this exact git branch, so the live preview URL uses the isolated
+        # Neon branch instead of the shared dev database. Deletes any
+        # leftover value from a previous run on this branch first, since
+        # Vercel's env API has no upsert and would otherwise error on a
+        # duplicate (key, target, gitBranch) on `synchronize` re-runs.
+        # continue-on-error: this job is a required status check (branch
+        # protection on main) -- a Vercel API hiccup here must not block
+        # merges. The migration step above remains the real gate.
+        continue-on-error: true
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+          GIT_BRANCH: ${{ needs.setup.outputs.branch }}
+          DB_URL: ${{ steps.create_neon_branch.outputs.db_url_pooled }}
+        run: |
+          set -e
+          EXISTING_ID=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_TEAM_ID&gitBranch=$GIT_BRANCH" \
+            | jq -r --arg branch "$GIT_BRANCH" '.envs[]? | select(.key=="DATABASE_URL" and .gitBranch==$branch) | .id' | head -n1)
+
+          if [ -n "$EXISTING_ID" ]; then
+            echo "Removing existing preview DATABASE_URL for branch $GIT_BRANCH"
+            curl -s -f -X DELETE -H "Authorization: Bearer $VERCEL_TOKEN" \
+              "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env/$EXISTING_ID?teamId=$VERCEL_TEAM_ID" > /dev/null
+          fi
+
+          curl -s -f -X POST -H "Authorization: Bearer $VERCEL_TOKEN" -H "Content-Type: application/json" \
+            "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_TEAM_ID" \
+            -d "$(jq -n --arg v "$DB_URL" --arg b "$GIT_BRANCH" \
+              '{key:"DATABASE_URL", value:$v, type:"encrypted", target:["preview"], gitBranch:$b}')" \
+            | jq -e '.id' > /dev/null \
+            && echo "Preview DATABASE_URL set for branch $GIT_BRANCH"
+
   delete_branch:
     name: Delete Neon Branch
     needs: setup
@@ -85,3 +121,21 @@ jobs:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           branch: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}
           api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Remove this branch's Vercel Preview DATABASE_URL override
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+          GIT_BRANCH: ${{ needs.setup.outputs.branch }}
+        run: |
+          set -e
+          EXISTING_ID=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_TEAM_ID&gitBranch=$GIT_BRANCH" \
+            | jq -r --arg branch "$GIT_BRANCH" '.envs[]? | select(.key=="DATABASE_URL" and .gitBranch==$branch) | .id' | head -n1)
+
+          if [ -n "$EXISTING_ID" ]; then
+            curl -s -f -X DELETE -H "Authorization: Bearer $VERCEL_TOKEN" \
+              "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env/$EXISTING_ID?teamId=$VERCEL_TEAM_ID" > /dev/null
+            echo "Removed preview DATABASE_URL override for branch $GIT_BRANCH"
+          fi
