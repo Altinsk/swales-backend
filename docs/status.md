@@ -118,6 +118,36 @@ before the relocation — read them as "this repo," not literally `back`.
   live exposure; left git history as-is rather than a disruptive rewrite
   for already-dead secrets. Shipped directly to `main` in all 3 repos
   (docs/config-only change, no branch/PR).
+- **Adopt Neon DB branching + Vercel Preview Deployments — Partially done
+  (2026-08-23).** Vercel Preview Deployments were already working (confirmed
+  via a real Vercel bot comment on PR #1). The Neon-branch-per-PR half took
+  real effort: Vercel's own "Connect a Project" dialog (Storage → Neon →
+  Connect to Project, with "Create Database Branch For Deployment" → Preview
+  checked) got stuck in a persistent *"This project is already connected to
+  the target store in one of the chosen environments"* error — survived
+  deleting `DATABASE_URL`/`DATABASE_URL_UNPOOLED` entirely, a hard reload,
+  and reinstalling the Neon integration. Root cause unresolved; likely needs
+  Vercel Support. Worked around it via **Neon's GitHub integration** instead
+  (Neon console → Integrations → GitHub → Install GitHub App, scoped to the
+  `swales-backend` repo), which sidesteps Vercel's flow entirely: added
+  `.github/workflows/neon_workflow.yml` (`neondatabase/create-branch-action`
+  + `delete-branch-action`) so every PR gets an isolated Neon branch forked
+  from `main`, `npm run migrate` runs against it as a pre-merge check, and
+  the branch is deleted when the PR closes. Note: Neon's own in-console
+  workflow template has a wrong output name (`db_url_with_pooler` — doesn't
+  exist; the real one is `db_url_pooled`, confirmed against the action's
+  README) — caught this because the first CI run failed with "Error parsing
+  url", fixed in a follow-up commit, verified working end-to-end on PR #3
+  (fresh branch created, `db:migrate` correctly reported "No migrations were
+  executed, database schema was already up to date"). Shipped on
+  `chore/neon-branch-per-pr-ci`, merged to `main` as commit `be916dc`.
+  **What's still missing**: this gives every PR an isolated *database*, but
+  doesn't yet wire that branch's connection string into the actual live
+  Vercel Preview *deployment's* `DATABASE_URL` for that PR — so visiting a
+  PR's preview URL in a browser still hits the shared dev database. Doing
+  that needs a Vercel API token (`VERCEL_TOKEN`) as an additional GitHub
+  secret plus a workflow step calling Vercel's env API scoped to the PR's
+  git branch — left as a follow-up pending a decision from Omar.
 
 ## In progress / decided but not yet done
 
@@ -145,3 +175,10 @@ before the relocation — read them as "this repo," not literally `back`.
    `DB_PASS`/`config/database.js` and the unused `EMAIL_USER`/`EMAIL_PASS`/
    `Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins` vars from
    `swales-backend` — flagged, not removed, during the hygiene pass.
+5. Decide whether to finish wiring Neon branches into live Vercel Preview
+   deployments (needs a `VERCEL_TOKEN`), or leave the CI-only migration
+   check as sufficient for now.
+6. Still unresolved: file a Vercel Support ticket about the stuck
+   "already connected" error in the Neon integration's "Connect a Project"
+   dialog, if the native Vercel-Neon branching (vs. the GitHub-integration
+   workaround now in place) is ever wanted.
