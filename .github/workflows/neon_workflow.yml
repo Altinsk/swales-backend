@@ -92,22 +92,43 @@ jobs:
           DB_URL: ${{ steps.create_neon_branch.outputs.db_url_pooled }}
         run: |
           set -e
-          EXISTING_ID=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" \
-            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_TEAM_ID&gitBranch=$GIT_BRANCH" \
-            | jq -r --arg branch "$GIT_BRANCH" '.envs[]? | select(.key=="DATABASE_URL" and .gitBranch==$branch) | .id' | head -n1)
 
-          if [ -n "$EXISTING_ID" ]; then
-            echo "Removing existing preview DATABASE_URL for branch $GIT_BRANCH"
-            curl -s -f -X DELETE -H "Authorization: Bearer $VERCEL_TOKEN" \
-              "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env/$EXISTING_ID?teamId=$VERCEL_TEAM_ID" > /dev/null
+          LIST_RESPONSE=$(curl -s -w '\n%{http_code}' -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_TEAM_ID&gitBranch=$GIT_BRANCH")
+          LIST_STATUS=$(echo "$LIST_RESPONSE" | tail -n1)
+          LIST_BODY=$(echo "$LIST_RESPONSE" | sed '$d')
+          echo "List envs status: $LIST_STATUS"
+          if [ "$LIST_STATUS" != "200" ]; then
+            echo "$LIST_BODY" | jq 'del(.envs[]?.value)' 2>/dev/null || echo "(non-JSON response)"
+            echo "Failed to list existing envs for branch $GIT_BRANCH"
+            exit 1
           fi
 
-          curl -s -f -X POST -H "Authorization: Bearer $VERCEL_TOKEN" -H "Content-Type: application/json" \
+          EXISTING_ID=$(echo "$LIST_BODY" | jq -r --arg branch "$GIT_BRANCH" \
+            '.envs[]? | select(.key=="DATABASE_URL" and .gitBranch==$branch) | .id' | head -n1)
+
+          if [ -n "$EXISTING_ID" ]; then
+            echo "Removing existing preview DATABASE_URL for branch $GIT_BRANCH ($EXISTING_ID)"
+            DEL_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -H "Authorization: Bearer $VERCEL_TOKEN" \
+              "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env/$EXISTING_ID?teamId=$VERCEL_TEAM_ID")
+            echo "Delete status: $DEL_STATUS"
+          fi
+
+          CREATE_RESPONSE=$(curl -s -w '\n%{http_code}' -X POST -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H "Content-Type: application/json" \
             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_TEAM_ID" \
             -d "$(jq -n --arg v "$DB_URL" --arg b "$GIT_BRANCH" \
-              '{key:"DATABASE_URL", value:$v, type:"encrypted", target:["preview"], gitBranch:$b}')" \
-            | jq -e '.id' > /dev/null \
-            && echo "Preview DATABASE_URL set for branch $GIT_BRANCH"
+              '{key:"DATABASE_URL", value:$v, type:"encrypted", target:["preview"], gitBranch:$b}')")
+          CREATE_STATUS=$(echo "$CREATE_RESPONSE" | tail -n1)
+          CREATE_BODY=$(echo "$CREATE_RESPONSE" | sed '$d')
+          echo "Create status: $CREATE_STATUS"
+          echo "$CREATE_BODY" | jq 'del(.value)' 2>/dev/null || echo "(non-JSON response)"
+
+          if [ "$CREATE_STATUS" != "200" ] && [ "$CREATE_STATUS" != "201" ]; then
+            echo "Failed to set preview DATABASE_URL for branch $GIT_BRANCH"
+            exit 1
+          fi
+          echo "Preview DATABASE_URL set for branch $GIT_BRANCH"
 
   delete_branch:
     name: Delete Neon Branch
@@ -130,12 +151,23 @@ jobs:
           GIT_BRANCH: ${{ needs.setup.outputs.branch }}
         run: |
           set -e
-          EXISTING_ID=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" \
-            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_TEAM_ID&gitBranch=$GIT_BRANCH" \
-            | jq -r --arg branch "$GIT_BRANCH" '.envs[]? | select(.key=="DATABASE_URL" and .gitBranch==$branch) | .id' | head -n1)
+          LIST_RESPONSE=$(curl -s -w '\n%{http_code}' -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_TEAM_ID&gitBranch=$GIT_BRANCH")
+          LIST_STATUS=$(echo "$LIST_RESPONSE" | tail -n1)
+          LIST_BODY=$(echo "$LIST_RESPONSE" | sed '$d')
+          echo "List envs status: $LIST_STATUS"
+          if [ "$LIST_STATUS" != "200" ]; then
+            echo "$LIST_BODY" | jq 'del(.envs[]?.value)' 2>/dev/null || echo "(non-JSON response)"
+            echo "Failed to list existing envs for branch $GIT_BRANCH -- nothing to clean up, continuing"
+            exit 0
+          fi
+
+          EXISTING_ID=$(echo "$LIST_BODY" | jq -r --arg branch "$GIT_BRANCH" \
+            '.envs[]? | select(.key=="DATABASE_URL" and .gitBranch==$branch) | .id' | head -n1)
 
           if [ -n "$EXISTING_ID" ]; then
-            curl -s -f -X DELETE -H "Authorization: Bearer $VERCEL_TOKEN" \
-              "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env/$EXISTING_ID?teamId=$VERCEL_TEAM_ID" > /dev/null
+            DEL_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -H "Authorization: Bearer $VERCEL_TOKEN" \
+              "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env/$EXISTING_ID?teamId=$VERCEL_TEAM_ID")
+            echo "Delete status: $DEL_STATUS"
             echo "Removed preview DATABASE_URL override for branch $GIT_BRANCH"
           fi
