@@ -71,7 +71,7 @@ jobs:
         run: npm run migrate
         env:
           NODE_ENV: production
-          DATABASE_URL: ${{ steps.create_neon_branch.outputs.db_url_with_pooler }}
+          DATABASE_URL: ${{ steps.create_neon_branch.outputs.db_url_pooled }}
 
   delete_branch:
     name: Delete Neon Branch
