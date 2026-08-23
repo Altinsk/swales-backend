@@ -98,8 +98,14 @@ jobs:
           LIST_STATUS=$(echo "$LIST_RESPONSE" | tail -n1)
           LIST_BODY=$(echo "$LIST_RESPONSE" | sed '$d')
           echo "List envs status: $LIST_STATUS"
+          # jq's walk() strips `value` at ANY nesting depth (Vercel's create
+          # response nests it under .created.value, not top-level .value --
+          # a plain `del(.value)` misses it and leaks the encrypted envelope
+          # into this PUBLIC repo's logs. Learned the hard way; see git log.
+          redact() { jq 'walk(if type == "object" then del(.value) else . end)' 2>/dev/null; }
+
           if [ "$LIST_STATUS" != "200" ]; then
-            echo "$LIST_BODY" | jq 'del(.envs[]?.value)' 2>/dev/null || echo "(non-JSON response)"
+            echo "$LIST_BODY" | redact
             echo "Failed to list existing envs for branch $GIT_BRANCH"
             exit 1
           fi
@@ -122,13 +128,14 @@ jobs:
           CREATE_STATUS=$(echo "$CREATE_RESPONSE" | tail -n1)
           CREATE_BODY=$(echo "$CREATE_RESPONSE" | sed '$d')
           echo "Create status: $CREATE_STATUS"
-          echo "$CREATE_BODY" | jq 'del(.value)' 2>/dev/null || echo "(non-JSON response)"
 
           if [ "$CREATE_STATUS" != "200" ] && [ "$CREATE_STATUS" != "201" ]; then
+            echo "$CREATE_BODY" | redact
             echo "Failed to set preview DATABASE_URL for branch $GIT_BRANCH"
             exit 1
           fi
-          echo "Preview DATABASE_URL set for branch $GIT_BRANCH"
+          NEW_ID=$(echo "$CREATE_BODY" | jq -r '.created.id // .id // empty')
+          echo "Preview DATABASE_URL set for branch $GIT_BRANCH (id: ${NEW_ID:-unknown})"
 
   delete_branch:
     name: Delete Neon Branch
@@ -151,13 +158,15 @@ jobs:
           GIT_BRANCH: ${{ needs.setup.outputs.branch }}
         run: |
           set -e
+          redact() { jq 'walk(if type == "object" then del(.value) else . end)' 2>/dev/null; }
+
           LIST_RESPONSE=$(curl -s -w '\n%{http_code}' -H "Authorization: Bearer $VERCEL_TOKEN" \
             "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_TEAM_ID&gitBranch=$GIT_BRANCH")
           LIST_STATUS=$(echo "$LIST_RESPONSE" | tail -n1)
           LIST_BODY=$(echo "$LIST_RESPONSE" | sed '$d')
           echo "List envs status: $LIST_STATUS"
           if [ "$LIST_STATUS" != "200" ]; then
-            echo "$LIST_BODY" | jq 'del(.envs[]?.value)' 2>/dev/null || echo "(non-JSON response)"
+            echo "$LIST_BODY" | redact
             echo "Failed to list existing envs for branch $GIT_BRANCH -- nothing to clean up, continuing"
             exit 0
           fi
