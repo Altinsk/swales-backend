@@ -43,18 +43,6 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/shares", shareRoutes);
 app.use("/api/elements", elementRoutes);
 
-app.get("/api/db-sync", async (req, res) => {
-  try {
-    // This triggers the table creation/update
-    await db.sequelize.sync({ alter: true });
-    res
-      .status(200)
-      .json({ message: "✅ Database tables synced successfully!" });
-  } catch (error) {
-    console.error("Sync error:", error);
-    res.status(500).json({ message: "❌ Sync failed", error: error.message });
-  }
-});
 app.post("/api/temporal", async (req, res) => {
   axios
     .post("https://globalwindatlas.info/api/temporal", req.body, {
@@ -121,22 +109,22 @@ app.post("/api/gwa/custom/windSpeedRose", async (req, res) => {
 // Vercel uses this. It does NOT run the code below this line.
 module.exports = app;
 
-// --- 3. LOCAL DEV / SYNC STARTUP ---
+// --- 3. LOCAL DEV STARTUP ---
 // This block ONLY runs if you type "node server.js" in your terminal.
-// It will sync your database tables before starting the server.
+// Schema changes now go through migrations (`npm run migrate`), not an
+// auto-alter on every start — see migrations/ and roadmap.md Phase 0.
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
 
-  console.log("🔄 Checking database connection and syncing tables...");
+  console.log("🔄 Checking database connection...");
 
-  // { alter: true } updates tables if columns change without deleting data
   db.sequelize
-    .sync({ alter: true })
+    .authenticate()
     .then(() => {
-      console.log("✅ Database synced successfully.");
+      console.log("✅ Database connection OK.");
       app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
     })
     .catch((err) => {
-      console.error("❌ Database sync failed:", err);
+      console.error("❌ Database connection failed:", err);
     });
 }
