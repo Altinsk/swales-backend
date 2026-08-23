@@ -118,6 +118,22 @@ before the relocation — read them as "this repo," not literally `back`.
   live exposure; left git history as-is rather than a disruptive rewrite
   for already-dead secrets. Shipped directly to `main` in all 3 repos
   (docs/config-only change, no branch/PR).
+- **Env-var gaps follow-up (2026-08-23).** Weather/map part — Done:
+  confirmed `swales-services/.env.local` now has real values for
+  `WEATHER_API_KEY2` (a deliberate second OpenWeatherMap key, isolated
+  rate-limit budget for the bulk box-weather endpoint — not a leftover)
+  and all 4 `NEXT_PUBLIC_CARTO_WRI_MAP_TILE_URL1-4` (CARTO/WRI water-stress
+  map layer tiles). Nothing further needed there. Still open, **on hold
+  until Omar opens a real business bank account**: `NEXT_PUBLIC_SUPPORT_LINK`
+  (services) and the Stripe donation links
+  (`NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10`/`_CUSTOM` in both `swales-designer`
+  and `swales-services` — both currently hold `REPLACE_ME` stub values). A
+  Stripe account needs a linked bank account to activate and issue real
+  Payment Links; PayPal.me/Buy Me a Coffee for the support link is
+  independent of that but Omar chose to hold both together. Code on both
+  sides already reads the same env-var names identically — nothing to
+  build once real links exist, just paste them into both `.env.local`
+  files and both Vercel projects' env vars.
 - **Adopt Neon DB branching + Vercel Preview Deployments — Done
   (2026-08-23).** Vercel Preview Deployments were already working (confirmed
   via a real Vercel bot comment on PR #1). The Neon-branch-per-PR half took
@@ -200,11 +216,11 @@ before the relocation — read them as "this repo," not literally `back`.
 
 ## Next up
 
-1. Decide on the env-var gaps the hygiene pass surfaced: set the missing
-   `NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10` (designer + services),
-   `WEATHER_API_KEY2`, `NEXT_PUBLIC_SUPPORT_LINK`, and the 4
-   `NEXT_PUBLIC_CARTO_WRI_MAP_TILE_URL` vars (services) if those features
-   are meant to be live — or confirm they're intentionally incomplete.
+1. **On hold until Omar opens a real business bank account:**
+   `NEXT_PUBLIC_SUPPORT_LINK` (services) and the Stripe donation links
+   (`NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10`/`_CUSTOM`, designer + services) —
+   both need a real payout destination Omar doesn't have yet. Everything
+   else on the code side is already wired and waiting on real values.
 2. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
    `DB_PASS`/`config/database.js` and the unused `EMAIL_USER`/`EMAIL_PASS`/
    `Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins` vars from
