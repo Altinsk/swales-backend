@@ -172,30 +172,36 @@ before the relocation — read them as "this repo," not literally `back`.
   touch right now per Omar's plan (build the rebuild in `SwalesApp-dev`
   fully, then cut the real domains over) — not forgotten, just deliberately
   deferred until cutover.
-- Repo consolidation into a GitHub Organization — discussed, not decided.
+- **Repo consolidation into a GitHub Organization — Decided: not needed
+  right now (2026-08-23).** No other developers are working on this
+  application at the moment, so there's no collaborator-access-management
+  need driving it — the entire benefit an Organization would add. Revisit
+  if/when a freelancer or team member joins; until then, staying on the
+  personal `Altinsk` account avoids the real migration cost (every Vercel
+  project's git integration would need manually reconnecting after any
+  transfer, since it's tied to the exact repo location).
 - Dedupe the redundant unique constraints that likely accumulated on
   `Users.Email` in production from years of repeated `sync({alter:true})`
   calls (found while baselining migrations, not yet fixed).
 
 ## Next up
 
-1. Decide the repo-consolidation question, or explicitly defer it.
-2. Small cleanup: dedupe `Users.Email` unique constraints in production.
-3. Decide on the env-var gaps the hygiene pass surfaced: set the missing
+1. Small cleanup: dedupe `Users.Email` unique constraints in production.
+2. Decide on the env-var gaps the hygiene pass surfaced: set the missing
    `NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10` (designer + services),
    `WEATHER_API_KEY2`, `NEXT_PUBLIC_SUPPORT_LINK`, and the 4
    `NEXT_PUBLIC_CARTO_WRI_MAP_TILE_URL` vars (services) if those features
    are meant to be live — or confirm they're intentionally incomplete.
-4. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
+3. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
    `DB_PASS`/`config/database.js` and the unused `EMAIL_USER`/`EMAIL_PASS`/
    `Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins` vars from
    `swales-backend` — flagged, not removed, during the hygiene pass.
-5. `main` now has branch protection (no force-push/deletion, required
+4. `main` now has branch protection (no force-push/deletion, required
    status check = the Neon migration job) — worth deciding if "require a
    pull request before merging" should be turned on too, now that the PR
    workflow is well-established; left off for now since this session still
    mixed in some direct-to-main doc pushes.
-6. Optional, not blocking anything: file a Vercel Support ticket about the
+5. Optional, not blocking anything: file a Vercel Support ticket about the
    stuck "already connected" error in the Neon integration's "Connect a
    Project" dialog, if the native Vercel-Neon branching (vs. the
    GitHub-integration workaround now in place) is ever wanted instead.
