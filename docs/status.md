@@ -180,28 +180,41 @@ before the relocation — read them as "this repo," not literally `back`.
   personal `Altinsk` account avoids the real migration cost (every Vercel
   project's git integration would need manually reconnecting after any
   transfer, since it's tied to the exact repo location).
-- Dedupe the redundant unique constraints that likely accumulated on
-  `Users.Email` in production from years of repeated `sync({alter:true})`
-  calls (found while baselining migrations, not yet fixed).
+- **Dedupe `Users.Email` unique constraints — Done (2026-08-23).** Years of
+  `sync({alter:true})` had left redundant UNIQUE constraints on the same
+  column: 2 on the Neon dev branch (`Users_Email_key`, `_key1`), 4 in
+  production (`_key` through `_key3`). Added
+  `migrations/20260823020000-dedupe-users-email-unique-constraint.js`,
+  which queries `information_schema` at runtime for every UNIQUE
+  constraint on `Users.Email` and drops all but the first — self-adjusting
+  to each environment's actual count rather than hardcoding names. Also
+  added `scripts/check-email-constraints.js`, a small read-only helper to
+  inspect `Users` constraints/indexes in dev or prod. Tested on the dev
+  branch first (2 → 1), then shipped on `chore/dedupe-users-email-constraint`,
+  PR'd (#5), merged to `main` (`0bf6d6d`). Applying the migration itself
+  against production required Omar to run it directly — the auto-mode
+  classifier hard-blocks any `sequelize-cli --env production` command,
+  including read-only status checks, so it isn't something this
+  assistant can run unattended. Verified live: production now shows a
+  single `Users_Email_key` constraint, matching dev.
 
 ## Next up
 
-1. Small cleanup: dedupe `Users.Email` unique constraints in production.
-2. Decide on the env-var gaps the hygiene pass surfaced: set the missing
+1. Decide on the env-var gaps the hygiene pass surfaced: set the missing
    `NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10` (designer + services),
    `WEATHER_API_KEY2`, `NEXT_PUBLIC_SUPPORT_LINK`, and the 4
    `NEXT_PUBLIC_CARTO_WRI_MAP_TILE_URL` vars (services) if those features
    are meant to be live — or confirm they're intentionally incomplete.
-3. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
+2. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
    `DB_PASS`/`config/database.js` and the unused `EMAIL_USER`/`EMAIL_PASS`/
    `Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins` vars from
    `swales-backend` — flagged, not removed, during the hygiene pass.
-4. `main` now has branch protection (no force-push/deletion, required
+3. `main` now has branch protection (no force-push/deletion, required
    status check = the Neon migration job) — worth deciding if "require a
    pull request before merging" should be turned on too, now that the PR
    workflow is well-established; left off for now since this session still
    mixed in some direct-to-main doc pushes.
-5. Optional, not blocking anything: file a Vercel Support ticket about the
+4. Optional, not blocking anything: file a Vercel Support ticket about the
    stuck "already connected" error in the Neon integration's "Connect a
    Project" dialog, if the native Vercel-Neon branching (vs. the
    GitHub-integration workaround now in place) is ever wanted instead.
