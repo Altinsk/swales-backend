@@ -3,10 +3,39 @@ const { successResponse, errorResponse } = require("../utils/responseHelper");
 const { User } = require("../models");
 const { generateToken } = require("../utils/tokenService");
 const { Op } = require("sequelize");
+const { OAuth2Client } = require("google-auth-library");
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 exports.GoogleSignIn = async (req, res) => {
   try {
-    const { firstName, email, authToken } = req.body;
+    const { authToken } = req.body;
+
+    if (!authToken) {
+      return errorResponse(res, "Missing Google authToken", null, 400);
+    }
+
+    // Verify the token against Google's public keys (signature, audience,
+    // issuer, expiry) instead of trusting the client-supplied email/name —
+    // this was previously a live account-takeover hole (see roadmap.md Phase 0).
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: authToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (verifyErr) {
+      console.error("Google id_token verification failed:", verifyErr.message);
+      return errorResponse(res, "Invalid Google token", null, 401);
+    }
+
+    if (!payload.email_verified) {
+      return errorResponse(res, "Google email is not verified", null, 401);
+    }
+
+    const email = payload.email;
+    const firstName = payload.given_name || payload.name || "";
 
     let targetUser = null;
 
