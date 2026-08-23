@@ -17,16 +17,21 @@ instruction: the only folder in scope going forward is `SwalesApp-dev`
 (`swales-backend`, `swales-designer`, `swales-services`) — `SwalesApp\back`
 is out of scope entirely and should not be read from or written to again.
 
-This also resolves a mix-up from earlier the same session: `back`'s own
-`roadmap.md`/`status.md` called itself canonical/production, while
-`swales-backend`'s `CLAUDE.md` called itself "an independent dev/sandbox...
-kept deliberately separate from production" — both wrong. `swales-backend`
-(this repo, deployed to `swales-backend.vercel.app`, Neon `us-east-1` DB) is
-confirmed to be the real production backend. Two fixes below (Google
-id_token verification, sequelize migrations) both actually shipped here,
-even though at the time this file still lived in `back`'s `docs/` folder.
-Older bullets below that say "`back`" are historical record from before
-this was sorted out — read them as "this repo," not literally `back`.
+**Important correction (same day, later in the session):** an earlier
+version of this note wrongly claimed `swales-backend` (this repo) was the
+real production backend. It isn't. Confirmed via Vercel's Domains settings
+and directly by Omar: the real live site is `api.swales.app` /
+`designer.swales.app`, served by the `SwalesApp\back` repo family —
+`swales-backend`/`swales-designer`/`swales-services` only have plain
+`.vercel.app` URLs, no custom domain, not live yet. This repo is the
+**active rebuild** for the roadmap; Omar is building the new version here
+deliberately separate from the live site, and will point the real domains
+here once it's ready. So: `SwalesApp-dev` stays the only folder in scope
+(that instruction is unaffected), but nothing shipped here is protecting
+real users yet — `api.swales.app` still runs the pre-fix code. Every
+"Done" bullet below describes work landing in the rebuild, not in
+production. Older bullets that say "`back`" are historical record from
+before the relocation — read them as "this repo," not literally `back`.
 
 ## Where things actually are
 
@@ -49,7 +54,9 @@ this was sorted out — read them as "this repo," not literally `back`.
   ownership risk. Real risk found instead: `server.js` ran
   `sequelize.sync({ alter: true })` on every deploy plus via a public
   endpoint, so a merge — or literally anyone hitting the endpoint — could
-  silently alter the live production schema with no review step. Also
+  silently alter the schema with no review step (this repo isn't live yet,
+  so the immediate risk was to the rebuild's own DB, not real user data —
+  see the correction note above). Also
   found: `socialAuthController.js`'s Google sign-in never verified the
   token it was given — a live account-takeover hole. Decided fix: verify
   Google's real `id_token` server-side (not the HMAC patch, not a full
@@ -114,6 +121,12 @@ this was sorted out — read them as "this repo," not literally `back`.
 
 ## In progress / decided but not yet done
 
+- **The live site (`api.swales.app`/`designer.swales.app`, `SwalesApp\back`
+  family) still runs pre-fix code** — Google sign-in account-takeover hole,
+  `sync({alter:true})` risk, no `.env.example`. Explicitly out of scope to
+  touch right now per Omar's plan (build the rebuild in `SwalesApp-dev`
+  fully, then cut the real domains over) — not forgotten, just deliberately
+  deferred until cutover.
 - Repo consolidation into a GitHub Organization — discussed, not decided.
 - Dedupe the redundant unique constraints that likely accumulated on
   `Users.Email` in production from years of repeated `sync({alter:true})`
