@@ -7,7 +7,7 @@ left off."
 
 ## Last updated
 
-2026-08-23
+2026-08-24
 
 ## Doc relocation note
 
@@ -218,27 +218,43 @@ before the relocation — read them as "this repo," not literally `back`.
 
 1. **Mobile stack — confirmed by Omar (2026-08-24).** React Native + Expo
    (TypeScript), offline-first local store (WatermelonDB/SQLite) with a sync
-   queue for field capture, auth reused from Phase A's shared backend once
-   that lands, external vision API for photo/plant ID at MVP, Expo push for
-   notifications. See `roadmap.md`'s "First 2 weeks" item 5 for the full
-   reasoning. Phase B is still gated on the separate auth-token decision
-   (roadmap "First 2 weeks" item 1 — blocks `shared_backend`, which blocks
-   Phase B) — that's the next real blocker, not the stack choice.
-2. **On hold until Omar opens a real business bank account:**
+   queue for field capture, auth reused from Phase A's shared backend, external
+   vision API for photo/plant ID at MVP, Expo push for notifications. See
+   `roadmap.md`'s "First 2 weeks" item 5 for the full reasoning.
+2. **Auth-token decision — Done (2026-08-24).** Investigated whether the
+   roadmap's flagged "HMAC workaround" still needed a fix: it didn't — the
+   2026-08-23 Google id_token fix had already retired it (backend now mints a
+   JWT on login, native or Google, used as a `Bearer` token on every call; the
+   HMAC path and any backend-side "re-derivation" of it no longer exist).
+   Decided with Omar: keep this single JWT/Bearer mechanism as the shared auth
+   for web + mobile, skip a refresh-token scheme for now (not enough
+   sensitivity/risk here to justify the extra complexity yet — revisit if the
+   app starts handling payments directly). Extended token lifetime 7d → 30d
+   for mobile-friendliness: `utils/tokenService.js`'s `generateToken` plus the
+   matching cookie `expires` in `authController.js` and
+   `socialAuthController.js`. Confirmed `swales-designer`/`swales-services`
+   need no change — their NextAuth config has no `maxAge` override, so both
+   already default to a 30-day session, now aligned. `shared_backend`/Phase B
+   is unblocked on the auth front; see item 3 for what's still open.
+3. **Build `AuthContext` for the web app.** `MobileHeader.jsx` references
+   `@/context/AuthContext`, which doesn't exist yet — now the actual next
+   prerequisite for Phase A/`shared_backend`/Phase B, since the auth-token
+   decision (item 2 above) is settled.
+4. **On hold until Omar opens a real business bank account:**
    `NEXT_PUBLIC_SUPPORT_LINK` (services) and the Stripe donation links
    (`NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10`/`_CUSTOM`, designer + services) —
    both need a real payout destination Omar doesn't have yet. Everything
    else on the code side is already wired and waiting on real values.
-3. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
+5. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
    `DB_PASS`/`config/database.js` and the unused `EMAIL_USER`/`EMAIL_PASS`/
    `Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins` vars from
    `swales-backend` — flagged, not removed, during the hygiene pass.
-4. `main` now has branch protection (no force-push/deletion, required
+6. `main` now has branch protection (no force-push/deletion, required
    status check = the Neon migration job) — worth deciding if "require a
    pull request before merging" should be turned on too, now that the PR
    workflow is well-established; left off for now since this session still
    mixed in some direct-to-main doc pushes.
-5. Optional, not blocking anything: file a Vercel Support ticket about the
+7. Optional, not blocking anything: file a Vercel Support ticket about the
    stuck "already connected" error in the Neon integration's "Connect a
    Project" dialog, if the native Vercel-Neon branching (vs. the
    GitHub-integration workaround now in place) is ever wanted instead.

@@ -5,7 +5,7 @@ dotenv.config();
 
 exports.generateToken = async (email, firstName) => {
   return jwt.sign({ email, firstName }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
+    expiresIn: "30d",
   });
 };
 exports.generateResetToken = async (email) => {

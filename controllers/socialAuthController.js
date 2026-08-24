@@ -88,7 +88,7 @@ exports.GoogleSignIn = async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
     });
 
     // 5. Send Response (MATCHING authController: Include userName)

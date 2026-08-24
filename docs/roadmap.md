@@ -91,7 +91,7 @@ necessarily editable) from both places.
 | Design canvas (zones, beds, orchards, water features) | List A – Phase 1 | web | Must | Built. Now being wired up with the plant DB + icon set delivered earlier. |
 | Plant & element database (region-aware, tagged) | List A – #1 / Phase 1 | backend | Must | Schema + 53-item seed delivered. Finish import + full icon population this phase. |
 | PDF export / clean map export | List A – Phase 1 | web | Must | Already done — out of scope, no further work needed. |
-| Decide & implement a real auth token flow (replace HMAC workaround) | Codebase audit — Section A | backend | Must | Current token is a deterministic HMAC(secret, email); the separate backend re-derives it independently. Needs a coordinated change on both sides at once — this is a decision only you can make, not something to guess at. |
+| Decide & implement a real auth token flow (replace HMAC workaround) | Codebase audit — Section A | backend | Must | Done 2026-08-24. The HMAC(secret, email) workaround was already retired by the 2026-08-23 Google id_token fix — backend now mints a JWT (native login or verified Google login) used as a `Bearer` token on every API call; nothing re-derives an HMAC anymore. Decided: keep this single JWT mechanism as the shared auth for web + mobile (Phase B), no refresh-token scheme for now — deferred until there's a real security need (e.g. handling payments). Extended JWT/cookie expiry 7d → 30d for mobile-friendliness (`utils/tokenService.js`, `authController.js`, `socialAuthController.js`); matches NextAuth's existing 30-day session default in designer/services, so no frontend change needed. |
 | Backend: properly verify Google id_token (signature, audience, expiry) | Codebase audit — Section A | backend | Must | Done 2026-08-23 — see Phase 0's Google Sign-In item and `status.md`. |
 | Build a real AuthContext for the web app | Codebase audit — Section A | web | Must | MobileHeader.jsx references @/context/AuthContext, which doesn't exist yet — import path was fixed but the context itself still needs building. Needed before wiring the account-details modal, and useful groundwork for shared_backend. |
 | Decide whether wind turbine sizing should use real wind speed | Codebase audit — Section A | web | Should | Currently matches your own wind.txt spec verbatim, including an unused meanWindSpeed parameter — deliberately not changed until you confirm intent. A product decision, not a bug. |
@@ -279,8 +279,9 @@ forgotten, just not part of this plan:
 
 ## First 2 weeks — concrete next actions
 
-1. Decide the auth token approach and confirm with whoever owns the separate
-   backend service — this blocks shared_backend, and shared_backend blocks Phase B.
+1. ~~Decide the auth token approach~~ — Done 2026-08-24, see Phase A table.
+   `shared_backend`/Phase B is now unblocked on this front; `AuthContext`
+   (web) still needs to be built.
 2. Decide the monetization framework (Priestley's 4-product model or otherwise) —
    cheap to decide now, expensive to retrofit once Reports/Phase F get built.
 3. Ship the Section-B fast wins in parallel (shareable link, PDF site report, site
@@ -301,8 +302,9 @@ forgotten, just not part of this plan:
    - Offline-first local store (WatermelonDB or plain SQLite) with a sync
      queue — field capture (GPS pins, photos) must work with no signal on-site,
      then sync once back online.
-   - Auth: reuse Phase A's shared backend once the auth-token decision and
-     `AuthContext` land — no second auth system.
+   - Auth: reuse Phase A's shared backend (auth-token decision made
+     2026-08-24 — JWT/Bearer, no refresh tokens for now) once `AuthContext`
+     lands — no second auth system.
    - Photo/plant ID: call an external vision API first for MVP speed; only
      consider an on-device model later if latency/cost becomes a real problem.
    - Push notifications: Expo's push service — no separate APNs/FCM wiring
