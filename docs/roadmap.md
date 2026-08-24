@@ -292,6 +292,22 @@ forgotten, just not part of this plan:
    hired freelancer, or a small contracted team) — this single decision sets the
    realistic pace for every Phase B-E date above. Confirmed there's no existing
    native app to build on, so this is a from-scratch decision.
+
+   **Proposed stack (2026-08-24) — pending Omar's review, not yet confirmed.
+   Do not start Phase B build work until this is signed off:**
+   - React Native + Expo (managed workflow), TypeScript — closest skill/code
+     overlap with the existing Next.js/TypeScript web stack (`swales-designer`,
+     `swales-services`); lets mobile share types/validation with the backend's
+     Sequelize models instead of redefining them.
+   - Offline-first local store (WatermelonDB or plain SQLite) with a sync
+     queue — field capture (GPS pins, photos) must work with no signal on-site,
+     then sync once back online.
+   - Auth: reuse Phase A's shared backend once the auth-token decision and
+     `AuthContext` land — no second auth system.
+   - Photo/plant ID: call an external vision API first for MVP speed; only
+     consider an on-device model later if latency/cost becomes a real problem.
+   - Push notifications: Expo's push service — no separate APNs/FCM wiring
+     needed at MVP scale.
 6. Scope Phase B down to literally just: camera → photo recognition → GPS-tagged
    log → save. Resist adding comments/likes/sharing until Phase C — that's the
    "prove the core loop works" test applied to mobile specifically.

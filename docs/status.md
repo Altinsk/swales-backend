@@ -216,21 +216,28 @@ before the relocation — read them as "this repo," not literally `back`.
 
 ## Next up
 
-1. **On hold until Omar opens a real business bank account:**
+1. **Mobile stack — proposed, pending Omar's review (2026-08-24).** React
+   Native + Expo (TypeScript), offline-first local store (WatermelonDB/SQLite)
+   with a sync queue for field capture, auth reused from Phase A's shared
+   backend once that lands, external vision API for photo/plant ID at MVP,
+   Expo push for notifications. See `roadmap.md`'s "First 2 weeks" item 5 for
+   the full reasoning. **Blocking: do not start Phase B (Mobile MVP) build
+   work until Omar confirms or revises this.**
+2. **On hold until Omar opens a real business bank account:**
    `NEXT_PUBLIC_SUPPORT_LINK` (services) and the Stripe donation links
    (`NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10`/`_CUSTOM`, designer + services) —
    both need a real payout destination Omar doesn't have yet. Everything
    else on the code side is already wired and waiting on real values.
-2. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
+3. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
    `DB_PASS`/`config/database.js` and the unused `EMAIL_USER`/`EMAIL_PASS`/
    `Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins` vars from
    `swales-backend` — flagged, not removed, during the hygiene pass.
-3. `main` now has branch protection (no force-push/deletion, required
+4. `main` now has branch protection (no force-push/deletion, required
    status check = the Neon migration job) — worth deciding if "require a
    pull request before merging" should be turned on too, now that the PR
    workflow is well-established; left off for now since this session still
    mixed in some direct-to-main doc pushes.
-4. Optional, not blocking anything: file a Vercel Support ticket about the
+5. Optional, not blocking anything: file a Vercel Support ticket about the
    stuck "already connected" error in the Neon integration's "Connect a
    Project" dialog, if the native Vercel-Neon branching (vs. the
    GitHub-integration workaround now in place) is ever wanted instead.
