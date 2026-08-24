@@ -9,6 +9,37 @@ left off."
 
 2026-08-24
 
+## BLOCKING before the next push to this repo
+
+Two local commits (`Invalidate sessions on password change...` and `Fix
+verification-token leak, add auth rate limiting...`) add a
+`Users.PasswordChangedAt` column reference used on every login and every
+protected-route request. **Confirmed locally: running the app against a
+database that doesn't have this column crashes on every login/protected
+request** (`SequelizeDatabaseError: column "PasswordChangedAt" does not
+exist` — read-only query, nothing was corrupted, but the request fails).
+
+The migration (`migrations/20260824010000-add-password-changed-at-to-users.js`)
+is already applied to the Neon **dev branch** (`DATABASE_URL_DEV_BRANCH`) —
+tested there, confirmed working. It is **not yet applied to whatever
+`DATABASE_URL` points to** (the database `swales-backend.vercel.app`
+actually runs on — confirmed via `models/index.js`, which uses
+`DATABASE_URL` directly whenever it's set, regardless of `NODE_ENV`; this
+is a different Neon endpoint than `DATABASE_URL_DEV_BRANCH`). Per the
+established pattern from the `Users.Email` constraint dedupe earlier this
+month, the auto-mode classifier blocks any `sequelize-cli --env production`
+command, including read-only status checks — **Omar needs to run this one
+himself**:
+
+```powershell
+cd swales-backend
+$env:NODE_ENV = "production"; npx sequelize-cli db:migrate
+```
+
+Run that *before* (or in the same breath as) pushing these two commits to
+`origin/main` — pushing first would break every login on the deployed
+backend until the migration catches up.
+
 ## Doc relocation note
 
 These three docs (`roadmap.md`, `status.md`, `roadmap_backlog.xlsx`) moved
@@ -214,6 +245,62 @@ before the relocation — read them as "this repo," not literally `back`.
   assistant can run unattended. Verified live: production now shows a
   single `Users_Email_key` constraint, matching dev.
 
+- **Auth threat sweep — Done (2026-08-24), production migration still
+  pending.** Omar asked what other bugs/threats were lurking in the auth
+  system after the earlier auth-token-decision work. Findings and fixes
+  (see the "BLOCKING before the next push" note at the top of this file for
+  the one that needs Omar's action before either commit ships):
+
+  - **Session invalidation didn't exist at all.** A stolen/leaked JWT was
+    valid until natural expiry no matter what — changing your password did
+    nothing to it. Added `Users.PasswordChangedAt` +
+    `tokenService.assertSessionValid()`, wired into both places that gate
+    access (`authController`'s `getUserIdFromRequest`, `projectController`'s
+    `protect`). Also wired up `Users.IsBlackListed`, a column that's existed
+    since the schema was created but nothing ever checked. Known UX side
+    effect, not yet addressed on the frontend: changing your password now
+    also logs out the session that made the change, with no messaging that
+    explains why.
+  - **Email verification links leaked a full 30-day session.** `register()`
+    reused the same `generateToken()` login uses, so an intercepted
+    verification email (forwarded, cached by a mail provider, auto-clicked
+    by a corporate security scanner) handed over real access, not just
+    "verified" status. Now signed with a dedicated `EMAIL_VERIFY_SECRET`
+    (24h expiry) that's cryptographically useless as a Bearer token —
+    verified the separation actually holds (a token from the new function
+    is rejected by the regular session-token verifier). No resend-verification
+    endpoint exists, so a user who doesn't click within 24h has no
+    self-service way to get a new link — pre-existing gap, slightly more
+    exposed now than under the old 30-day link; flagged, not built.
+  - **No rate limiting anywhere.** Added `express-rate-limit`:
+    login/google-signin at 10/15min, register/forgot-password/reset-password
+    at 5/hour. Verified live in isolation (10 requests pass, 11th+ get 429).
+  - **`forgotPassword` leaked which emails are registered** (distinguishable
+    404 vs success). Now returns the same response either way.
+  - **CORS allowlist had two domains that didn't match this project at
+    all** (`garden-desinger.vercel.app` — typo'd — and
+    `perma-app-vercel.vercel.app`), while the actual current
+    `swales-designer.vercel.app`/`swales-services.vercel.app` deployments
+    weren't listed. Confirmed the real URLs with Omar directly and swapped
+    them in.
+
+  **Still open, not fixed this session:** Bearer tokens live in
+  `localStorage` on both frontends rather than relying on the `httpOnly`
+  cookie the backend already sets — real XSS exposure, but a bigger
+  refactor (switching both frontends' API calls off `Authorization` headers
+  onto cookie-based auth) than fit alongside everything else here. No known
+  XSS today; not urgent, but the largest remaining gap on this list.
+
+- **`shared_backend` — folded into Phase B, not a separate task
+  (2026-08-24).** Investigated before writing any code: `swales-backend`
+  already *is* the single shared backend serving both `swales-designer` and
+  `swales-services` — one `Users` table, one `Projects` table, same auth.
+  There's no second backend to unify. What's actually still missing (a
+  photo-upload-with-GPS endpoint, whatever data model mobile "captures"
+  need) is Phase-B-specific work, not a standalone prerequisite. Omar
+  agreed — `roadmap.md`'s "Shared account/data backend" row updated to
+  reflect this rather than treated as separate open work.
+
 ## Next up
 
 1. **Mobile stack — confirmed by Omar (2026-08-24).** React Native + Expo
@@ -288,33 +375,43 @@ before the relocation — read them as "this repo," not literally `back`.
    app; whether it should replace Header.jsx's built-in mobile view or stay
    unused is a product decision, not this item's job. Both are reasonable
    follow-ups if useful later, not correctness gaps in what shipped.
-4. **`shared_backend` (Shared account/data backend linking web + mobile) is
-   now unblocked and ready to start** — both predecessors (auth-token
-   decision, `AuthContext`) are Done as of 2026-08-24. See `roadmap.md`'s
-   Phase A table.
-5. Two related, non-blocking follow-ups surfaced while building
-   `AuthContext`, worth a look whenever there's spare cycles: (a) whether
-   `MobileHeader.jsx` (`swales-services`) should actually replace
-   `Header.jsx`'s built-in mobile view or stay unused/get removed — it's
-   dead code today, not imported anywhere; (b) `Header.jsx` still has its
-   own independent, duplicate auth-state logic instead of using the new
-   context — fine as-is, but a DRY cleanup opportunity if `Header.jsx` ever
-   needs auth-state changes anyway.
-6. **On hold until Omar opens a real business bank account:**
+4. **Both resolved 2026-08-24**, see the entries above: `MobileHeader.jsx`
+   removed (dead code, `Header.jsx` already covers mobile); `Header.jsx`
+   migrated onto `AuthContext`, dropping its duplicate auth logic. `swales-backend`'s
+   `shared_backend` item folded into Phase B rather than treated as
+   standalone work.
+5. **Run the production migration before pushing** — see the "BLOCKING
+   before the next push" note at the top of this file. This is the actual
+   next action, ahead of everything else below.
+6. **Biggest remaining item from the auth threat sweep**: switch both
+   frontends off `localStorage`-stored Bearer tokens onto the `httpOnly`
+   cookie the backend already sets on login. Real XSS exposure today (any
+   script-injection bug can read the token directly), no known exploit yet,
+   but the largest gap left open after this session's fixes. A genuine
+   refactor — touches every authenticated API call in both
+   `swales-designer` and `swales-services` — worth its own session rather
+   than squeezing in alongside other work.
+7. No resend-verification-email endpoint exists, and the verification
+   token now expires in 24h instead of the old (accidental) 30 days — a
+   user who doesn't click in time has no self-service recovery today
+   (would need to contact support, since re-registering with the same
+   email fails). Worth building if this becomes a real support burden;
+   flagged, not built.
+8. **On hold until Omar opens a real business bank account:**
    `NEXT_PUBLIC_SUPPORT_LINK` (services) and the Stripe donation links
    (`NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10`/`_CUSTOM`, designer + services) —
    both need a real payout destination Omar doesn't have yet. Everything
    else on the code side is already wired and waiting on real values.
-7. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
+9. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
    `DB_PASS`/`config/database.js` and the unused `EMAIL_USER`/`EMAIL_PASS`/
    `Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins` vars from
    `swales-backend` — flagged, not removed, during the hygiene pass.
-8. `main` now has branch protection (no force-push/deletion, required
+10. `main` now has branch protection (no force-push/deletion, required
    status check = the Neon migration job) — worth deciding if "require a
    pull request before merging" should be turned on too, now that the PR
    workflow is well-established; left off for now since this session still
    mixed in some direct-to-main doc pushes.
-9. Optional, not blocking anything: file a Vercel Support ticket about the
+11. Optional, not blocking anything: file a Vercel Support ticket about the
    stuck "already connected" error in the Neon integration's "Connect a
    Project" dialog, if the native Vercel-Neon branching (vs. the
    GitHub-integration workaround now in place) is ever wanted instead.
