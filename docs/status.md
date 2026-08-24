@@ -316,6 +316,71 @@ before the relocation — read them as "this repo," not literally `back`.
   `CLAUDE.md` files updated to point to the new doc and cleaned up of
   several sessions' worth of stale "corrected" notes that had accumulated.
 
+- **Monetization framework — Decided (2026-08-24).** Omar's opening
+  question: what stops someone from just screenshotting a "report" instead
+  of paying for it? Correct instinct — no technical measure stops
+  screenshots (true of every SaaS product with visual output), so the
+  answer isn't to lock down pixels, it's to design what's free vs. paid so
+  a screenshot of the free tier isn't worth anything a paying user has.
+  Landed on a Priestley 4-product ladder, but reconciled against what's
+  *actually already built* rather than designed from a blank slate —
+  investigated the codebase before proposing anything:
+
+  - Found a fully working **combined "Site Report" PDF generator**
+    already wired into `swales-services`'s map page
+    (`utils/combinedReportPdf.js` → `generateCombinedReport`, triggered
+    from `MapComponent.jsx`), already gated behind sign-up via
+    `ReportAuthGateModal` ("Sign in or create a free account to download
+    it"). This *is* the free-for-contact stage Omar described — already
+    live, no build needed.
+  - Found a live **`SmartSolarAdvisor`** component (solar-specific advice,
+    shown in the solar layer panel and inside the combined report) — real,
+    but distinct from a *planting-recommendation* advisor, which doesn't
+    exist.
+  - Found `swales-services/src/app/pricing/page.js` already sketches a
+    4-tier structure (Explorer/free, Homestead, Farm & Business,
+    Industrial) with three tiers marked "Coming Soon" and aspirational
+    feature lists — not wired to any real checkout. Worth revisiting once
+    the framework below is final, since its copy doesn't match the
+    decision.
+  - Saved-project limits: the CRUD exists, no limit is enforced on free
+    users today. Sharing: a read-only share-link feature exists
+    (`/api/shares`, `/share/[uuid]`) — single-link, not multi-user
+    collaboration.
+
+  **Decided structure:**
+  - **Free** — all analysis maps (solar/wind/soil/water stress/altitude/
+    contour/flooding/weather) + the design canvas. No gate, no account
+    needed to browse or design.
+  - **Free-for-contact** — printing/downloading a report or a design
+    requires an account. Already built and working as of today; nothing
+    to change here.
+  - **Core paid** (subscription, monthly + yearly billing options; actual
+    price points not yet set — a separate, still-open decision) — at
+    *launch*, this is an enhanced version of the report (multi-location
+    comparison, unlimited regenerations, no upsell footer), deliberately
+    **not** just re-gating the same free report behind a paywall (would
+    have made the free tier pointless). Saved-project-limit enforcement,
+    real multi-user collaboration, the planting-recommendation AI advisor,
+    and the not-yet-built "consulting site details for energy" feature are
+    all explicitly **deferred, not part of the initial paid bundle** —
+    Omar's call, specifically to avoid building a full feature set before
+    a single subscriber exists.
+  - **Post-core** — intentionally undefined. To be designed once there's
+    real usage data telling us what's actually working, not speculatively
+    now.
+
+  **Blocked on**: Stripe actually being wired for real subscription
+  checkout, which is itself blocked on Omar opening a business bank
+  account (already tracked). The framework is decided; nothing here can
+  go live yet regardless.
+
+  **Not yet done, follow-up work**: `pricing/page.js`'s copy doesn't match
+  this decision yet (still shows the old aspirational 4-tier sketch) —
+  worth updating once ready to communicate this externally, not urgent
+  since nothing is purchasable yet anyway. Actual subscription price
+  points still need deciding — separate from the framework itself.
+
 ## Next up
 
 1. **Mobile stack — confirmed by Omar (2026-08-24).** React Native + Expo

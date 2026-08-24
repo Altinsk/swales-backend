@@ -66,10 +66,13 @@ deferred** that carry real risk if ignored too long.
 
 ### Product / business decisions pending
 
-6. **Monetization framework not decided.** — *Severity: Medium, rising
-   over time.* Blocks Reports becoming "the monetization unlock" and
-   blocks designing Phase F's marketplace/premium tiers. Cheap to decide
-   now, expensive to retrofit later. In progress as of 2026-08-24.
+6. **Monetization framework — Decided 2026-08-24** (Priestley 4-product
+   ladder, see `status.md` for full detail), **but two things still
+   open**: actual subscription price points haven't been set (a separate
+   decision from the framework shape), and `swales-services/src/app/pricing/page.js`'s
+   copy still shows the old pre-decision aspirational tier sketch — worth
+   updating before this is communicated externally, not urgent since
+   nothing is purchasable yet (blocked on Stripe/bank account regardless).
 
 7. **Wind turbine sizing** — decide whether to use real wind-speed data
    vs. the current stub that matches `wind.txt` verbatim (including an
