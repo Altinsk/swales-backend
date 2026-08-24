@@ -38,11 +38,12 @@ exact week count.
 
 ## Tracking convention
 
-Three documents, each with one job — don't duplicate data across them or they'll drift, the way two earlier roadmap drafts already did once:
+Four documents, each with one job — don't duplicate data across them or they'll drift, the way two earlier roadmap drafts already did once:
 
 - **`docs/roadmap.md`** (this file) — the stable plan: phases, ordering, reasoning. Canonical, lives only here (`swales-backend/` repo). `swales-designer/` and `swales-services/` each carry a one-line pointer to it in their own `CLAUDE.md`, not a copy.
 - **`docs/roadmap_backlog.xlsx`** — the live tracker. Same 96+ items as this file, one row each, with a `Status` column (`Not started / In progress / Blocked / Postponed / Done`). This is what gets edited sprint-to-sprint — this file doesn't try to track status.
 - **`docs/status.md`** — short, session-continuity note: what just got decided, what's in progress, what's next. Updated at the end of significant sessions so a fresh chat doesn't start cold.
+- **`docs/future-concerns.md`** — a living checklist of risks/gaps intentionally deferred rather than fixed immediately (security hardening not yet done, pending product decisions, technical debt) — reviewed periodically so nothing gets silently forgotten until it forces backtracking. Not a duplicate of the other three: this is specifically for "we should deal with this eventually" items, not active work or the phase plan itself.
 
 ## The split logic: why web and mobile do different jobs
 
@@ -99,6 +100,8 @@ necessarily editable) from both places.
 | Reconcile plant/element schema with the long-term relationships knowledge-graph vision | Codebase audit — Section C | backend | Should | The delivered 22-field flat schema (good_companions/avoid_near as strings) is a deliberate MVP. Your long-term vision is a ~50-field plant schema plus dozens of linked entity types (guilds, pests, diseases, cover crops...) tied together by a real relationships graph. Not a conflict — but worth a short pass now so early seed data doesn't need re-keying once the graph structure gets built, since that's explicitly a 2-3 year vision per your own notes, not this sprint. |
 | Pinpoint global data extraction to user (auto site data from location pin) | List A – #0 | backend | Must | Infrastructure multiplier — do this early, it speeds up every later feature that needs site context. |
 | Shared account/data backend linking web + mobile | New (mobile ask) | backend | Must | Folded into Phase B, not standalone (decided with Omar, 2026-08-24). Investigated before starting: `swales-backend` already *is* the single shared backend serving both `swales-designer`/`swales-services` — one Users table, one Projects table, same auth. There's no second backend to unify. What's actually still missing (a photo-upload-with-GPS endpoint, whatever data model mobile "captures" need) is genuine Phase B scope, not a separate prerequisite — build it there instead of as its own item. |
+| Add optional 2FA (TOTP) for user accounts | Added 2026-08-24 (Omar) | backend + web | Should | Not urgent pre-monetization — account takeover today just exposes garden designs. Target: built and available **before monetization goes live**, not necessarily before the monetization framework itself is decided, since a paid tier/billing info is what actually raises the stakes. TOTP (e.g. `otplib`), not SMS — SMS costs money per message and has known SIM-swap weaknesses. See `docs/future-concerns.md`. |
+| Block disposable/temporary email domains at registration | Added 2026-08-24 (Omar) | backend | Should | Anti-abuse: check the email domain against a maintained blocklist (e.g. the `disposable-email-domains` package) in `register()`, reject with a clear message. Closes off spam-account creation via throwaway addresses, pairs with the rate limiting already added 2026-08-24. Not yet implemented. See `docs/future-concerns.md`. |
 
 ### Phase A2 — Analysis Engine Quick Wins (parallel)
 

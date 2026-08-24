@@ -301,6 +301,21 @@ before the relocation — read them as "this repo," not literally `back`.
   agreed — `roadmap.md`'s "Shared account/data backend" row updated to
   reflect this rather than treated as separate open work.
 
+- **`docs/future-concerns.md` created (2026-08-24), at Omar's request.** A
+  4th tracking doc, distinct from `roadmap.md`/`status.md`/
+  `roadmap_backlog.xlsx`: a living checklist of risks/gaps intentionally
+  deferred rather than fixed immediately, meant to be reviewed before
+  starting a new phase or a real-users/monetization milestone so nothing
+  gets silently forgotten until it forces backtracking. Seeded with
+  everything flagged-but-not-fixed from the auth threat sweep, plus two new
+  items Omar asked to add to scope: **2FA** (TOTP, not SMS — target before
+  monetization go-live, not necessarily before the monetization framework
+  is decided) and **blocking disposable/temporary email domains at
+  registration**. Both added to `roadmap.md`'s Phase A table and
+  `roadmap_backlog.xlsx` as new "Should" rows, neither built yet. All three
+  `CLAUDE.md` files updated to point to the new doc and cleaned up of
+  several sessions' worth of stale "corrected" notes that had accumulated.
+
 ## Next up
 
 1. **Mobile stack — confirmed by Omar (2026-08-24).** React Native + Expo
