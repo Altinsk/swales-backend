@@ -293,8 +293,7 @@ forgotten, just not part of this plan:
    realistic pace for every Phase B-E date above. Confirmed there's no existing
    native app to build on, so this is a from-scratch decision.
 
-   **Proposed stack (2026-08-24) — pending Omar's review, not yet confirmed.
-   Do not start Phase B build work until this is signed off:**
+   **Stack confirmed by Omar (2026-08-24):**
    - React Native + Expo (managed workflow), TypeScript — closest skill/code
      overlap with the existing Next.js/TypeScript web stack (`swales-designer`,
      `swales-services`); lets mobile share types/validation with the backend's

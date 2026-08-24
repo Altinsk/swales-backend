@@ -216,13 +216,14 @@ before the relocation — read them as "this repo," not literally `back`.
 
 ## Next up
 
-1. **Mobile stack — proposed, pending Omar's review (2026-08-24).** React
-   Native + Expo (TypeScript), offline-first local store (WatermelonDB/SQLite)
-   with a sync queue for field capture, auth reused from Phase A's shared
-   backend once that lands, external vision API for photo/plant ID at MVP,
-   Expo push for notifications. See `roadmap.md`'s "First 2 weeks" item 5 for
-   the full reasoning. **Blocking: do not start Phase B (Mobile MVP) build
-   work until Omar confirms or revises this.**
+1. **Mobile stack — confirmed by Omar (2026-08-24).** React Native + Expo
+   (TypeScript), offline-first local store (WatermelonDB/SQLite) with a sync
+   queue for field capture, auth reused from Phase A's shared backend once
+   that lands, external vision API for photo/plant ID at MVP, Expo push for
+   notifications. See `roadmap.md`'s "First 2 weeks" item 5 for the full
+   reasoning. Phase B is still gated on the separate auth-token decision
+   (roadmap "First 2 weeks" item 1 — blocks `shared_backend`, which blocks
+   Phase B) — that's the next real blocker, not the stack choice.
 2. **On hold until Omar opens a real business bank account:**
    `NEXT_PUBLIC_SUPPORT_LINK` (services) and the Stripe donation links
    (`NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10`/`_CUSTOM`, designer + services) —

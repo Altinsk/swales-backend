@@ -22,7 +22,7 @@ Session continuity notes: `docs/status.md`
 `SwalesApp\back` (a separate, unrelated repo/database) and its own docs
 are out of scope — do not read from or write to it.
 
-**Open flag (2026-08-24):** the mobile app tech stack (React Native + Expo
-proposal — see `docs/roadmap.md`'s "First 2 weeks" item 5) is pending Omar's
-review. Do not start Phase B (Mobile MVP) build work until he confirms or
-revises it — see `docs/status.md`'s "Next up" item 1.
+**Mobile stack confirmed (2026-08-24):** React Native + Expo (see
+`docs/roadmap.md`'s "First 2 weeks" item 5). Phase B (Mobile MVP) is still
+gated on the separate auth-token decision, not the stack — see
+`docs/status.md`'s "Next up" item 1.
