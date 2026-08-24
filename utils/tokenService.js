@@ -18,6 +18,22 @@ exports.verifyResetToken = async (token) => {
   return jwt.verify(token, process.env.RESET_SECRET).email;
 };
 
+// Email-verification links previously carried a full generateToken() -
+// the same 30-day session token used for real logins - so intercepting a
+// verification email (forwarded, cached by a mail provider, auto-clicked
+// by a corporate security scanner) handed over a working session, not
+// just "email verified" status. Signed with its own secret so it's
+// useless as a Bearer token against JWT_SECRET-protected routes even if
+// intercepted, regardless of its expiry.
+exports.generateEmailVerifyToken = async (email) => {
+  return jwt.sign({ email }, process.env.EMAIL_VERIFY_SECRET, {
+    expiresIn: "24h",
+  });
+};
+exports.verifyEmailVerifyToken = async (token) => {
+  return jwt.verify(token, process.env.EMAIL_VERIFY_SECRET).email;
+};
+
 // A JWT is stateless — its signature/expiry checking out doesn't mean the
 // session should still be trusted. Called after the caller has already
 // loaded the User row (so this adds no extra query): rejects a token

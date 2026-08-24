@@ -13,6 +13,8 @@ const {
   verifyToken,
   verifyResetToken,
   assertSessionValid,
+  generateEmailVerifyToken,
+  verifyEmailVerifyToken,
 } = require("../utils/tokenService");
 const { Op } = require("sequelize");
 
@@ -45,7 +47,7 @@ exports.register = async (req, res) => {
       loginType: "native",
       AuthToken: null,
     });
-    const token = await generateToken(user.Email);
+    const token = await generateEmailVerifyToken(user.Email);
 
     await sendVerificationEmail(user.Email, token, src);
     successResponse(res, `User registered, check email for verification`);
@@ -65,7 +67,7 @@ exports.verifyEmail = async (req, res) => {
       src == "swales"
         ? `${process.env.SWALES_APP_URL}/login`
         : `${process.env.DESIGNER_APP_URL}`;
-    const email = await verifyToken(token); // Assuming this throws error if invalid
+    const email = await verifyEmailVerifyToken(token); // Assuming this throws error if invalid
 
     await User.update(
       { Verified: true, DateLastUpdated: new Date() },
@@ -140,10 +142,13 @@ exports.login = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   const { email, source } = req.body;
   const user = await User.findOne({ where: { Email: email } });
-  if (!user) return errorResponse(res, "User not found", null, 404);
-  const token = await generateResetToken(user.Email);
-  await sendResetPasswordEmail(email, token, source);
-  successResponse(res, "Reset link sent");
+  // Same response whether or not the account exists - a distinguishable
+  // "User not found" here lets anyone enumerate every registered email.
+  if (user) {
+    const token = await generateResetToken(user.Email);
+    await sendResetPasswordEmail(email, token, source);
+  }
+  successResponse(res, "If that email is registered, a reset link has been sent.");
 };
 
 exports.resetPassword = async (req, res) => {

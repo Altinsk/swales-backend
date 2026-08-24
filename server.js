@@ -25,8 +25,8 @@ const corsOptions = {
     "https://swales.app",
     "https://www.swales.app",
     "https://designer.swales.app",
-    "https://garden-desinger.vercel.app",
-    "https://perma-app-vercel.vercel.app",
+    "https://swales-designer.vercel.app",
+    "https://swales-services.vercel.app",
   ],
   credentials: true,
 };

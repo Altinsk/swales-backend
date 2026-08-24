@@ -10,13 +10,14 @@ const {
   getProfile, // New
 } = require("../controllers/authController");
 const { GoogleSignIn } = require("../controllers/socialAuthController");
+const { loginLimiter, sensitiveActionLimiter } = require("../utils/rateLimiters");
 const router = express.Router();
 
-router.post("/register", register);
-router.post("/google-signin", GoogleSignIn);
-router.post("/login", login);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
+router.post("/register", sensitiveActionLimiter, register);
+router.post("/google-signin", loginLimiter, GoogleSignIn);
+router.post("/login", loginLimiter, login);
+router.post("/forgot-password", sensitiveActionLimiter, forgotPassword);
+router.post("/reset-password", sensitiveActionLimiter, resetPassword);
 router.get("/verify-email/:src/:token", verifyEmail);
 
 // New Routes
