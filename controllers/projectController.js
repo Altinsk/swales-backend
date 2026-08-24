@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { Project, User, Op } = require("../models");
 const { successResponse, errorResponse } = require("../utils/responseHelper");
-const { verifyToken } = require("../utils/tokenService");
+const { verifyToken, assertSessionValid } = require("../utils/tokenService");
 const { put } = require("@vercel/blob");
 
 const saveThumbnail = async (base64Image) => {
@@ -43,6 +43,7 @@ exports.protect = async (req, res, next) => {
       if (!user) {
         return errorResponse(res, "User not found", null, 401);
       }
+      assertSessionValid(token, user);
       req.user = user;
       next();
     } catch (error) {

@@ -12,6 +12,7 @@ const {
   generateResetToken,
   verifyToken,
   verifyResetToken,
+  assertSessionValid,
 } = require("../utils/tokenService");
 const { Op } = require("sequelize");
 
@@ -152,7 +153,12 @@ exports.resetPassword = async (req, res) => {
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(newPassword, salt);
     await User.update(
-      { PasswordHash: hash, PasswordSalt: salt, DateLastUpdated: new Date() },
+      {
+        PasswordHash: hash,
+        PasswordSalt: salt,
+        DateLastUpdated: new Date(),
+        PasswordChangedAt: new Date(),
+      },
       { where: { Email: email } },
     );
     successResponse(res, "Password reset successfully");
@@ -178,6 +184,8 @@ const getUserIdFromRequest = async (req) => {
 
   const user = await User.findOne({ where: { Email: email } });
   if (!user) throw new Error("User not found");
+
+  assertSessionValid(token, user);
 
   return user;
 };
@@ -262,6 +270,7 @@ exports.changePassword = async (req, res) => {
         PasswordHash: hash,
         PasswordSalt: salt,
         DateLastUpdated: new Date(),
+        PasswordChangedAt: new Date(),
       },
       { where: { UserId: user.UserId } },
     );

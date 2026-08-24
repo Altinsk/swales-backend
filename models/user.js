@@ -39,6 +39,7 @@ module.exports = (sequelize, DataTypes) => {
       IsDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
       loginType: { type: DataTypes.STRING(20), allowNull: true },
       AuthToken: { type: DataTypes.STRING(255), allowNull: true },
+      PasswordChangedAt: { type: DataTypes.DATE, allowNull: true },
     },
     {
       sequelize,
