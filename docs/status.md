@@ -236,25 +236,85 @@ before the relocation — read them as "this repo," not literally `back`.
    need no change — their NextAuth config has no `maxAge` override, so both
    already default to a 30-day session, now aligned. `shared_backend`/Phase B
    is unblocked on the auth front; see item 3 for what's still open.
-3. **Build `AuthContext` for the web app.** `MobileHeader.jsx` references
-   `@/context/AuthContext`, which doesn't exist yet — now the actual next
-   prerequisite for Phase A/`shared_backend`/Phase B, since the auth-token
-   decision (item 2 above) is settled.
-4. **On hold until Omar opens a real business bank account:**
+3. **Build `AuthContext` for the web app — Done (2026-08-24).**
+   `swales-designer` already had a working `context/AuthContext.tsx`; the gap
+   was specifically `swales-services`, which didn't. Built
+   `swales-services/src/context/AuthContext.jsx` mirroring designer's
+   pattern, adapted to services' existing conventions (`accessToken`
+   localStorage key set by `login/page.js`/`googleUtils.js`, the
+   `NEXT_PUBLIC_API_BASE_URL + "/api"` base-URL convention already used by
+   `Header.jsx`/`AccountDetailsModal.jsx`), wired into `providers.js`, and
+   hooked into `login/page.js`'s `handleLogin` so `user` state updates
+   immediately after login instead of waiting for a hard reload (the
+   Google-signin path already does a hard `window.location.href` redirect,
+   so it didn't need the same fix). Cleaned up the now-stale "doesn't exist
+   yet" comment block in `MobileHeader.jsx`.
+
+   **Caught and fixed a real regression before shipping:** the first draft
+   copied designer's `{!isLoading && children}` render gate on the provider.
+   `npm run build` still succeeded and looked fine at a glance, but a direct
+   before/after diff of the static HTML output (`git stash` to get a clean
+   baseline, rebuild, compare) showed the gate was silently blanking
+   Header/nav content (`Sign Up`, the Designer link, etc.) out of every
+   statically-prerendered page — invisible in the terminal build log, only
+   visible by actually inspecting `.next/server/app/*.html`. That's fine for
+   `swales-designer` (an app-like tool, not SEO-dependent) but wrong here:
+   `swales-services` is the public marketing/blog site with real SEO
+   requirements (`metadataBase`, Google site verification, 180+ static
+   blog/use-case pages). Fixed by always rendering `children` regardless of
+   `isLoading` — matches how `Header.jsx` already behaves (shows logged-out
+   UI immediately, updates once `/auth/me` resolves).
+
+   Verified end-to-end with a live dev server against the real rebuild
+   backend (`https://swales-backend.vercel.app`, no local backend needed):
+   confirmed the logged-out page renders correctly (build regression fixed),
+   then set an invalid token in `localStorage` and reloaded — confirmed via
+   console/network inspection that `/api/auth/me` fires with the `Bearer`
+   header, correctly gets 401, and the context's error handling clears
+   `accessToken`/`userName` from `localStorage` (self-healing `logout()`
+   path). No real account was created for this — didn't want to write a
+   throwaway row into the rebuild's Neon DB just for a QA pass; the failure
+   path alone was enough to prove the request/header/error-handling wiring
+   is correct, and the success path is structurally identical to designer's
+   already-proven implementation.
+
+   **Not done, explicitly out of scope for this item:** `Header.jsx` (the
+   header component actually rendered on every page) keeps its own
+   independent, duplicate auth-state logic (`getUserDetails()`, manual
+   `localStorage` reads, an ineffective cookie-clearing loop on logout since
+   the real auth cookie is `httpOnly`) rather than being migrated onto the
+   new context. `MobileHeader.jsx` — the component that actually needed
+   `AuthContext` to compile — is still not imported/rendered anywhere in the
+   app; whether it should replace Header.jsx's built-in mobile view or stay
+   unused is a product decision, not this item's job. Both are reasonable
+   follow-ups if useful later, not correctness gaps in what shipped.
+4. **`shared_backend` (Shared account/data backend linking web + mobile) is
+   now unblocked and ready to start** — both predecessors (auth-token
+   decision, `AuthContext`) are Done as of 2026-08-24. See `roadmap.md`'s
+   Phase A table.
+5. Two related, non-blocking follow-ups surfaced while building
+   `AuthContext`, worth a look whenever there's spare cycles: (a) whether
+   `MobileHeader.jsx` (`swales-services`) should actually replace
+   `Header.jsx`'s built-in mobile view or stay unused/get removed — it's
+   dead code today, not imported anywhere; (b) `Header.jsx` still has its
+   own independent, duplicate auth-state logic instead of using the new
+   context — fine as-is, but a DRY cleanup opportunity if `Header.jsx` ever
+   needs auth-state changes anyway.
+6. **On hold until Omar opens a real business bank account:**
    `NEXT_PUBLIC_SUPPORT_LINK` (services) and the Stripe donation links
    (`NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10`/`_CUSTOM`, designer + services) —
    both need a real payout destination Omar doesn't have yet. Everything
    else on the code side is already wired and waiting on real values.
-5. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
+7. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
    `DB_PASS`/`config/database.js` and the unused `EMAIL_USER`/`EMAIL_PASS`/
    `Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins` vars from
    `swales-backend` — flagged, not removed, during the hygiene pass.
-6. `main` now has branch protection (no force-push/deletion, required
+8. `main` now has branch protection (no force-push/deletion, required
    status check = the Neon migration job) — worth deciding if "require a
    pull request before merging" should be turned on too, now that the PR
    workflow is well-established; left off for now since this session still
    mixed in some direct-to-main doc pushes.
-7. Optional, not blocking anything: file a Vercel Support ticket about the
+9. Optional, not blocking anything: file a Vercel Support ticket about the
    stuck "already connected" error in the Neon integration's "Connect a
    Project" dialog, if the native Vercel-Neon branching (vs. the
    GitHub-integration workaround now in place) is ever wanted instead.
