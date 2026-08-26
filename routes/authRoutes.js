@@ -8,6 +8,7 @@ const {
   updateProfile, // New
   changePassword,
   getProfile, // New
+  logout,
 } = require("../controllers/authController");
 const { GoogleSignIn } = require("../controllers/socialAuthController");
 const { loginLimiter, sensitiveActionLimiter } = require("../utils/rateLimiters");
@@ -21,6 +22,7 @@ router.post("/reset-password", sensitiveActionLimiter, resetPassword);
 router.get("/verify-email/:src/:token", verifyEmail);
 
 // New Routes
+router.post("/logout", logout);
 router.get("/me", getProfile);
 router.put("/update-profile", updateProfile);
 router.put("/change-password", changePassword);

@@ -28,13 +28,8 @@ deferred** that carry real risk if ignored too long.
 
 ### Security
 
-1. **Bearer tokens live in `localStorage`, not the `httpOnly` cookie the
-   backend already sets on login.** — *Severity: Medium, no known exploit
-   today.* Any XSS bug anywhere in `swales-designer`/`swales-services`
-   could read the token directly via script; an `httpOnly` cookie can't be
-   read by JS at all. Fix is a real refactor — switching both frontends'
-   API calls off `Authorization` headers onto cookie-based auth — flagged
-   2026-08-24, not started.
+1. ~~**Bearer tokens live in `localStorage`, not the `httpOnly` cookie the
+   backend already sets on login.**~~ Done 2026-08-26 — see `status.md`.
 
 2. **No 2FA.** — *Severity: Low now, rising to Medium/High once
    monetization ships.* Account takeover today just exposes garden
@@ -92,9 +87,9 @@ deferred** that carry real risk if ignored too long.
    a short pass now so early seed data doesn't need re-keying once that
    2-3 year vision gets built.
 
-10. **Companion-planting data incomplete**: 107 of 171 species have empty
+10. ~~**Companion-planting data incomplete**: 107 of 171 species have empty
     `good_companions`. Subcategory vocabulary also has ~65 near-duplicate
-    values needing cleanup.
+    values needing cleanup.~~ Done 2026-08-24 — see `status.md`.
 
 11. **Canvas not wired to the real plant database.** `swales-designer`
     still reads a static `presets.json` — nothing calls `/api/elements` or
@@ -127,5 +122,12 @@ deferred** that carry real risk if ignored too long.
 
 ## Resolved
 
-*(Nothing yet — this section fills in as items above get fixed, each with
-the date and a pointer to where the work actually happened.)*
+- **Bearer tokens in `localStorage` → `httpOnly` cookie auth** — Done
+  2026-08-26. See `status.md` for full detail: backend now reads the
+  session from `req.cookies.token` (Authorization header kept only as a
+  fallback for non-browser callers), added `POST /api/auth/logout`, cookie
+  `sameSite` switched to `none` in production so it survives the current
+  cross-site `*.vercel.app` deployment topology, and both frontends
+  (`swales-designer`, `swales-services`) no longer read/write the token via
+  `localStorage` or send an `Authorization` header — everything rides the
+  cookie via `withCredentials: true`.

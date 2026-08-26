@@ -28,31 +28,32 @@ const saveThumbnail = async (base64Image) => {
   return blob.url;
 };
 
-// Middleware (no change)
+// Reads the session token from the httpOnly cookie set on login, falling
+// back to an Authorization header for any caller that isn't a browser with
+// cookies (kept for compatibility, not the primary path anymore).
 exports.protect = async (req, res, next) => {
-  let token;
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    try {
-      token = req.headers.authorization.split(" ")[1];
-      const email = await verifyToken(token);
-      const user = await User.findOne({ where: { Email: email } });
-
-      if (!user) {
-        return errorResponse(res, "User not found", null, 401);
-      }
-      assertSessionValid(token, user);
-      req.user = user;
-      next();
-    } catch (error) {
-      return errorResponse(res, "Not authorized, token failed", error, 401);
-    }
-  }
+  const headerToken =
+    req.headers.authorization && req.headers.authorization.startsWith("Bearer")
+      ? req.headers.authorization.split(" ")[1]
+      : null;
+  const token = req.cookies?.token || headerToken;
 
   if (!token) {
     return errorResponse(res, "Not authorized, no token", null, 401);
+  }
+
+  try {
+    const email = await verifyToken(token);
+    const user = await User.findOne({ where: { Email: email } });
+
+    if (!user) {
+      return errorResponse(res, "User not found", null, 401);
+    }
+    assertSessionValid(token, user);
+    req.user = user;
+    next();
+  } catch (error) {
+    return errorResponse(res, "Not authorized, token failed", error, 401);
   }
 };
 

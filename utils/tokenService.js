@@ -3,6 +3,21 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
+// The frontends and backend don't share a registrable domain in every
+// deployed environment - designer.swales.app/api.swales.app do (same-site),
+// but the pre-cutover *.vercel.app URLs used for the rebuild are each their
+// own site, so a `lax` cookie would silently never be sent on a cross-site
+// fetch/XHR call. `none` (with `secure`, required alongside it) works for
+// both cases, at the cost of requiring HTTPS - which is why `secure` still
+// gates on production and dev keeps `lax` (localhost is plain http).
+exports.sessionCookieOptions = (expires) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  path: "/",
+  ...(expires ? { expires } : {}),
+});
+
 exports.generateToken = async (email, firstName) => {
   return jwt.sign({ email, firstName }, process.env.JWT_SECRET, {
     expiresIn: "30d",

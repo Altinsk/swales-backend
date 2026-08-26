@@ -45,6 +45,49 @@ Four documents, each with one job — don't duplicate data across them or they'l
 - **`docs/status.md`** — short, session-continuity note: what just got decided, what's in progress, what's next. Updated at the end of significant sessions so a fresh chat doesn't start cold.
 - **`docs/future-concerns.md`** — a living checklist of risks/gaps intentionally deferred rather than fixed immediately (security hardening not yet done, pending product decisions, technical debt) — reviewed periodically so nothing gets silently forgotten until it forces backtracking. Not a duplicate of the other three: this is specifically for "we should deal with this eventually" items, not active work or the phase plan itself.
 
+## Guiding directives (added 2026-08-26 — read before re-prioritizing any phase)
+
+Three standing directives from Omar that should shape sequencing decisions
+from here on, not just sit as one more backlog row:
+
+1. **On-ground equipment link is the long-term differentiator.** The vision
+   is for Swales to stop being pure software and become a system of
+   assistance that connects, over time, to physical on-ground tools/equipment
+   — built, sourced, or resold. This is explicitly a multi-year direction
+   ("work with this as much as we can, from now"), not a Phase F line item to
+   defer until usage data exists — it should inform product decisions now
+   (e.g., what data the app should already be capturing that a future
+   equipment-integration layer would need). Overlaps existing `Hardware`
+   (Phase F) and `Services directory`/`Quotes` rows — those get folded into
+   this vision rather than treated as separate later-stage ideas. No
+   concrete build items yet; the immediate ask is to keep this lens active
+   while making other roadmap calls, and to start noting/collecting
+   concrete equipment/partner candidates as they come up.
+2. **Community is core infrastructure, not a late nice-to-have.** Explicitly
+   more than a design gallery or image showcase: real community means
+   *helping* (people answering each other), *sharing knowledge* (wiki/
+   reference content), and a *marketplace* — the things that make people
+   keep coming back and make the tool durable long-term. Today's phase plan
+   pushes most of this into Phase C (weeks 13-19) and Phase F (marketplace,
+   later/gated on usage data). Keep this directive in mind when Phase B
+   nears completion — there's a case for pulling core community mechanics
+   (comments/sharing, a real reference/wiki, a lightweight marketplace)
+   earlier than currently scheduled, rather than waiting the full original
+   sequence. Not yet re-sequenced in the phase tables below; flagging here
+   so it isn't lost, and revisit concretely once Phase B is closer to done.
+3. **Relaunch the live version ASAP; keep building in the background.**
+   Supersedes the prior assumption (recorded in `status.md`'s doc-relocation
+   note) that the rebuild would be finished fully before cutting the real
+   domains (`api.swales.app`/`designer.swales.app`) over. New direction:
+   get the updated rebuild live sooner rather than later, and continue
+   Phase A-onward development against the live app afterward instead of in
+   isolation. This changes the cutover criterion from "fully done" to
+   "stable enough for real users" — needs a concrete go/no-go checklist
+   (auth security posture, migration safety, monitoring) before an actual
+   cutover date gets picked. Not yet scoped into a checklist; next
+   session/planning pass should turn this into concrete pre-launch
+   must-haves rather than leaving it as a general intention.
+
 ## The split logic: why web and mobile do different jobs
 
 The mobile app is **not** a smaller version of the web app. Web is where deep,
@@ -90,7 +133,7 @@ necessarily editable) from both places.
 | Feature | Origin | Platform | Priority | Notes |
 |---|---|---|---|---|
 | Design canvas (zones, beds, orchards, water features) | List A – Phase 1 | web | Must | Built. Now being wired up with the plant DB + icon set delivered earlier. |
-| Plant & element database (region-aware, tagged) | List A – #1 / Phase 1 | backend | Must | Schema + 53-item seed delivered. Finish import + full icon population this phase. |
+| Plant & element database (region-aware, tagged) | List A – #1 / Phase 1 | backend | Must | Schema + 171-species seed delivered; companion-planting data, subcategory vocabulary cleanup, and a new derived `layer` field (canopy/sub-canopy/shrub/herbaceous/root/groundcover/vine/cover_crop/fungal) are all complete (Done 2026-08-24/25). Remaining: full icon population this phase. |
 | PDF export / clean map export | List A – Phase 1 | web | Must | Already done — out of scope, no further work needed. |
 | Decide & implement a real auth token flow (replace HMAC workaround) | Codebase audit — Section A | backend | Must | Done 2026-08-24. The HMAC(secret, email) workaround was already retired by the 2026-08-23 Google id_token fix — backend now mints a JWT (native login or verified Google login) used as a `Bearer` token on every API call; nothing re-derives an HMAC anymore. Decided: keep this single JWT mechanism as the shared auth for web + mobile (Phase B), no refresh-token scheme for now — deferred until there's a real security need (e.g. handling payments). Extended JWT/cookie expiry 7d → 30d for mobile-friendliness (`utils/tokenService.js`, `authController.js`, `socialAuthController.js`); matches NextAuth's existing 30-day session default in designer/services, so no frontend change needed. |
 | Backend: properly verify Google id_token (signature, audience, expiry) | Codebase audit — Section A | backend | Must | Done 2026-08-23 — see Phase 0's Google Sign-In item and `status.md`. |

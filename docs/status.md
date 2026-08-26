@@ -7,7 +7,113 @@ left off."
 
 ## Last updated
 
-2026-08-24
+2026-08-26
+
+## New directives from Omar (2026-08-26) — see `roadmap.md`'s "Guiding directives" section for full detail
+
+1. **On-ground equipment link** is a long-term vision (link the software tool
+   to physical on-ground tools/equipment — built, sourced, or resold) to keep
+   active in mind now, not deferred to Phase F.
+2. **Community is core**, not a late add-on — helping, knowledge-sharing, and
+   marketplace, not just a design gallery. Consider pulling core community
+   mechanics earlier than the current Phase C/F placement once Phase B is
+   closer to done.
+3. **Relaunch the live rebuild ASAP**, keep developing in the background
+   afterward — supersedes the earlier "finish the rebuild fully, then cut
+   over" assumption. Still needs a concrete pre-launch checklist (not
+   written yet).
+
+**httpOnly-cookie auth migration — Done 2026-08-26.** Omar's explicit
+priority for this session, directly supporting directive 3 (it was the
+biggest open security gap and worth closing before a real relaunch).
+Bearer tokens no longer live in `localStorage` in either frontend — auth
+now rides the `httpOnly` cookie the backend already set on login but
+neither frontend was actually using.
+
+- **Backend** (`swales-backend`): `projectController.js`'s `protect`
+  middleware and `authController.js`'s `getUserIdFromRequest` both now read
+  the session from `req.cookies.token` first, falling back to an
+  `Authorization: Bearer` header only for non-browser callers (kept for
+  compatibility, not expected to be used by either frontend anymore). Added
+  `POST /api/auth/logout` (clears the cookie) — previously logout only
+  existed as a frontend-side `localStorage.removeItem`, no server-side
+  cookie clearing existed at all. `updateProfile` now also reissues the
+  cookie (previously only returned the new token in the response body,
+  which nothing read from a cookie-based flow), matching `login` and
+  `google-signin`.
+- **Real bug caught before shipping**: the cookie was already being set
+  with `sameSite: "lax"`, which silently never gets attached on a
+  cross-site `fetch`/`XHR` request (only on top-level navigations). That's
+  fine for `designer.swales.app` → `api.swales.app` (same registrable
+  domain under `swales.app`, so same-site), but the *currently deployed*
+  rebuild only has plain `*.vercel.app` URLs — each `*.vercel.app` subdomain
+  is its own site per the public suffix list, so `swales-designer.vercel.app`
+  calling `swales-backend.vercel.app` is cross-site. Under `lax` this
+  migration would have compiled and looked fine locally, then silently
+  failed to authenticate anything the moment it was tested against the real
+  deployed rebuild. Fixed by adding `utils/tokenService.js#sessionCookieOptions()`,
+  a shared helper used by every place that sets/clears the cookie: `sameSite:
+  "none"` in production (works for both the same-site custom-domain future
+  and the cross-site `.vercel.app` present; requires `secure`, already
+  gated on `NODE_ENV === "production"`), `"lax"` in local dev (localhost is
+  plain http, can't set `secure`, and doesn't need cross-site cookies
+  anyway).
+- **Frontends** (`swales-designer`, `swales-services`): both `AuthContext`s
+  rewritten — `user` is now the only piece of session state exposed; there
+  is no raw token anymore. `login()` takes no arguments (the backend has
+  already set the cookie by the time it's called) and just re-fetches
+  `/auth/me`; `logout()` calls the new `/api/auth/logout` endpoint before
+  clearing local state. Every call site that read `localStorage.getItem("accessToken"/"token")`
+  or attached `Authorization: Bearer ${token}` was converted to
+  `withCredentials: true` (axios) with no header — this touched `TopBar.tsx`,
+  `AllGardensModal.tsx`, `AccountDetailsModal.tsx`/`.jsx` (both apps),
+  `GoogleLogin.tsx`, `app/page.tsx`, `app/share/[uuid]/page.tsx`, `app/login/page.tsx`
+  (designer), and `login/page.js`, `googleUtils.js`, `pricing/page.js`,
+  `SignupQuotePopup.jsx` (services). `pricing/page.js` and
+  `SignupQuotePopup.jsx` had been reading `localStorage` directly just to
+  render an "is this visitor logged in" state — switched to `useAuth().user`
+  instead. `google-signin` calls in both apps were also missing
+  `withCredentials: true` on the axios call itself (needed for the browser
+  to accept the `Set-Cookie` on a cross-origin response) — added.
+- **Verified**: both apps build clean (`npm run build`, `swales-designer`
+  and `swales-services`) with no new type errors (cross-checked designer's
+  full `tsc --noEmit` output against `git status` — every reported error is
+  in a file this change didn't touch, e.g. `GardenCanvas.tsx`'s pre-existing
+  Konva typing issues).
+- **Full login round-trip verified live against the Neon dev branch
+  (2026-08-26, same session)** — ran the backend locally with
+  `DATABASE_URL` overridden to `DATABASE_URL_DEV_BRANCH` (local `.env`'s own
+  `DATABASE_URL` points at the main branch per its own comment, so this
+  override was required to avoid touching real/main data). Registered a
+  throwaway `swales-qa-cookie-test+<timestamp>@example.com` account,
+  verified it by generating a real `EMAIL_VERIFY_SECRET` token via
+  `tokenService.generateEmailVerifyToken` directly (same code path a real
+  email link uses, no inbox needed), then confirmed with `curl` + a cookie
+  jar: login sets the cookie with the correct attributes; `GET /api/auth/me`
+  and `GET /api/projects` (`protect` middleware) both authenticate off the
+  cookie alone with **no** `Authorization` header sent; `PUT
+  /api/auth/update-profile` correctly reissues the cookie with the updated
+  payload; `POST /api/auth/logout` clears the cookie and the same jar
+  correctly gets 401 on the next request. Also restarted the same server
+  with `NODE_ENV=production` (still pointed at the dev branch, not
+  production) and confirmed the `Set-Cookie` header actually reads `Secure;
+  SameSite=None` in that mode vs. plain `SameSite=Lax` in dev — the specific
+  fix for the cross-site `*.vercel.app` bug is confirmed at the header
+  level. Cleaned up afterward: deleted the throwaway test user from the dev
+  branch, stopped both local server instances. **Still not verified**: real
+  browser enforcement of `Secure`/`SameSite=None` against an actual
+  `https://*.vercel.app` deployment (curl's cookie jar doesn't enforce the
+  same-origin/HTTPS restrictions a browser does, so this was confirmed at
+  the header-content level, not via an end-to-end HTTPS round trip) — worth
+  a real click-through test against a live Vercel preview URL before or
+  during the actual relaunch, but the mechanism itself is now proven
+  correct against real data.
+- **Not done, explicitly out of scope for this item**: rate-limiting or
+  auditing the new `/logout` endpoint (it doesn't need auth to call — always
+  safe to no-op-clear a cookie you may not have, but worth a glance later);
+  the Authorization-header fallback path is now genuinely unused by both
+  frontends and could eventually be removed once we're confident nothing
+  else depends on it.
 
 ## BLOCKING before the next push to this repo
 
@@ -69,11 +175,57 @@ before the relocation — read them as "this repo," not literally `back`.
 - **Stage 1 (plant DB + canvas + icons)**: schema, 171-species seed data,
   Postgres `Element` model + API routes are built, verified, and pushed to
   main. `icon_spec.md` (fallback-chain icon rendering, not 1:1 art)
-  is drafted. Still open: companion-planting data on the 118 newly-added
-  species (107/171 rows have empty `good_companions`), subcategory vocabulary
-  cleanup (65 near-duplicate values), and all frontend canvas wiring — the
-  designer app still only reads the static `presets.json`, nothing reads
-  `/api/elements` or resolves `icon_key` yet.
+  is drafted. **Companion-planting data — Done (2026-08-24).** All 98
+  plant rows that had an empty `good_companions` (the 9 non-plant rows —
+  animal systems, water features, structures — correctly stay blank, that
+  field doesn't apply to them) now have `good_companions` filled, following
+  the same convention as the original 64 rows: real `id` cross-references
+  where the seed has a matching species, free text for well-known
+  companions outside the seed's scope (e.g. `tomato`, `most_brassicas`).
+  A few `avoid_near` gaps were also filled where a real antagonism was
+  missing (e.g. stone fruit vs walnut juglone, alliums vs asparagus).
+  `validateSeed.js` still passes with only the expected free-text
+  warnings, no structural errors. **Subcategory vocabulary cleanup — Done
+  (2026-08-24).** 65 distinct `subcategory` values reduced to 53: fixed 3
+  rows where `subcategory` crossed top-level `category` boundaries
+  (`pistachio`/`katuk` tagged with tree/herb-only subcats despite being
+  `shrub`; `strawberry_tree` tagged `hedge_fruit`, a shrub-only value,
+  despite being `tree`), and merged 9 near-duplicate pairs that meant the
+  same thing (`fruit_hedge`/`hedge_fruit` reordered, `hedge`/
+  `hedge_wildlife`, `fruit_shrub`/`soft_fruit`, `fruit_vine`/
+  `edible_vine`, `allium`→`culinary`, `annual_companion` split into
+  `dynamic_accumulator`/`edible_groundcover` depending on category,
+  `culinary_medicinal`/`succulent_medicinal`→`medicinal`,
+  `salad_perennial`→`perennial_vegetable`, `fast_multipurpose`→
+  `multipurpose_tree`, `edible_succulent`/`fruit_groundcover`→
+  `edible_groundcover`). The one remaining value that still spans two
+  categories (`nitrogen_fixer_cover`, used by both `groundcover` and
+  `grass_cover_crop`) is intentional — same concept, correctly reused, not
+  a naming inconsistency. No frontend code referenced any of the old
+  values (`swales-designer` doesn't read `subcategory` at all yet), so
+  this was a pure data change. **`layer` field added — Done (2026-08-25).**
+  Omar asked whether the 171-species seed distinguished food-forest layers
+  (canopy vs sub-canopy etc.) — it didn't; `category`/`subcategory` only
+  got you partway there. Added a new `layer` column (enum: `canopy`,
+  `sub_canopy`, `shrub`, `herbaceous`, `root`, `groundcover`, `vine`,
+  `cover_crop`, `fungal`, `n_a`) derived from `category` +
+  `mature_height_m`, with full derivation rules recorded in
+  `schema.md`'s "Why this shape" section (canopy/sub_canopy split at 15m,
+  matching the pre-existing `canopy_tree` subcategory rows; `root` reserved
+  for species where an underground tuber/rhizome is the *primary* harvest,
+  not just anything with `root` in `yield_type`). Touched: CSV (new
+  column), `schema.md`, `validateSeed.js` (new expected column + enum),
+  `models/element.js`, a new migration
+  (`20260825010000-add-layer-to-elements.js`), and `seedElements.js`'s
+  column mapping. Migration applied and dev branch re-seeded — same
+  pattern as before, `sequelize-cli` already defaults to
+  `DATABASE_URL_DEV_BRANCH` per `config/config.json`, no manual override
+  needed for the migration step (only `seedElements.js` needs the
+  override, since it reads `DATABASE_URL` directly via `models/index.js`
+  rather than through sequelize-cli's env-aware config). Still open: all
+  frontend canvas wiring — the designer app still only reads the static
+  `presets.json`, nothing reads `/api/elements` or resolves `icon_key`
+  yet.
 - **Roadmap**: `docs/roadmap.md` is the merged, canonical Phase 0→F plan
   (106 items total after adding Phase 0). `docs/roadmap_backlog.xlsx` is
   the matching live tracker with a `Status` column. `swales-designer/CLAUDE.md`

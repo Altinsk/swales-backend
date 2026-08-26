@@ -1,7 +1,7 @@
 // controllers\socialAuthController.js
 const { successResponse, errorResponse } = require("../utils/responseHelper");
 const { User } = require("../models");
-const { generateToken } = require("../utils/tokenService");
+const { generateToken, sessionCookieOptions } = require("../utils/tokenService");
 const { Op } = require("sequelize");
 const { OAuth2Client } = require("google-auth-library");
 
@@ -83,13 +83,11 @@ exports.GoogleSignIn = async (req, res) => {
     );
 
     // 4. Set Cookie (MATCHING authController)
-    res.cookie("token", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-    });
+    res.cookie(
+      "token",
+      accessToken,
+      sessionCookieOptions(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+    );
 
     // 5. Send Response (MATCHING authController: Include userName)
     successResponse(

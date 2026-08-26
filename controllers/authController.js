@@ -15,6 +15,7 @@ const {
   assertSessionValid,
   generateEmailVerifyToken,
   verifyEmailVerifyToken,
+  sessionCookieOptions,
 } = require("../utils/tokenService");
 const { Op } = require("sequelize");
 
@@ -122,14 +123,11 @@ exports.login = async (req, res) => {
     user.dataValues.FirstName,
   );
 
-  res.cookie("token", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    // domain: process.env.ROOT_DOMAIN, // e.g., '.yourdomain.com'
-    path: "/",
-    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-  });
+  res.cookie(
+    "token",
+    accessToken,
+    sessionCookieOptions(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+  );
 
   successResponse(
     res,
@@ -137,6 +135,11 @@ exports.login = async (req, res) => {
     { accessToken, userName: user.dataValues.FirstName },
     user.UserId,
   );
+};
+
+exports.logout = async (req, res) => {
+  res.clearCookie("token", sessionCookieOptions());
+  successResponse(res, "Logged out");
 };
 
 exports.forgotPassword = async (req, res) => {
@@ -173,18 +176,19 @@ exports.resetPassword = async (req, res) => {
 };
 
 const getUserIdFromRequest = async (req) => {
-  // 1. Get the Authorization header
+  // Primary path: the httpOnly cookie set on login. Falls back to an
+  // Authorization header for any caller that isn't a browser with cookies.
   const authHeader = req.headers.authorization;
+  const headerToken =
+    authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : null;
+  const token = req.cookies?.token || headerToken;
 
-  // 2. Check if the header exists and follows the 'Bearer <token>' format
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!token) {
     throw new Error("Not authenticated");
   }
 
-  // 3. Extract the token (the part after "Bearer ")
-  const token = authHeader.split(" ")[1];
-
-  // The rest of your logic remains the same
   const email = await verifyToken(token);
 
   const user = await User.findOne({ where: { Email: email } });
@@ -220,7 +224,14 @@ exports.updateProfile = async (req, res) => {
       updatedUser.FirstName,
     );
 
-    // 4. Send new token in response
+    // 4. Refresh the session cookie so it carries the updated details too
+    res.cookie(
+      "token",
+      newToken,
+      sessionCookieOptions(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+    );
+
+    // 5. Send new token in response
     successResponse(res, "Profile updated successfully", {
       firstName: updatedUser.FirstName,
       lastName: updatedUser.LastName,
