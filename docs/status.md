@@ -7,7 +7,7 @@ left off."
 
 ## Last updated
 
-2026-08-26
+2026-08-27
 
 ## New directives from Omar (2026-08-26) — see `roadmap.md`'s "Guiding directives" section for full detail
 
@@ -540,6 +540,44 @@ before the relocation — read them as "this repo," not literally `back`.
   worth updating once ready to communicate this externally, not urgent
   since nothing is purchasable yet anyway. Actual subscription price
   points still need deciding — separate from the framework itself.
+
+- **Monetization framework — revised 2026-08-27: the full report moves
+  from free-for-contact to Core paid.** Came up while scoping the shared
+  site-data cache work (see the entry above) — Omar asked how a full,
+  single-location report gets sold to premium users, which surfaced that
+  the 2026-08-24 decision had already given the combined Site Report away
+  free-for-contact (account required, no payment). Decided: that's wrong
+  now — **the full site analysis report itself (solar/wind/soil/water
+  stress/flood risk/precipitation/elevation, plus contour once the
+  in-progress report work lands) requires payment, not just an account.**
+
+  What stays free-for-contact: **downloading/printing a design** (a canvas
+  export) — only the *analysis report* moved, not everything that
+  `ReportAuthGateModal` currently gates. The previously-decided "enhanced"
+  Core-paid layer (multi-location comparison, unlimited regenerations, no
+  upsell footer) still applies on top of this — it was originally meant to
+  differentiate paid from a *free* base report; now it differentiates paid
+  from a *paid* base report, which is a smaller gap than before and may be
+  worth revisiting once the base paid report actually exists.
+
+  **Not decided yet, flagged for a follow-up session**: the actual selling
+  mechanism for the single-location report — subscription-only (must
+  subscribe even for one report), one-time pay-per-report purchase, or
+  both offered together. Three options were discussed inline (subscription
+  only / one-time purchase / both) with a lean toward eventually offering
+  both, but nothing was locked in — this needs its own decision before
+  building any paywall UI.
+
+  **Still blocked on the same thing as before**: Stripe isn't wired for
+  real payments, itself blocked on Omar opening a business bank account.
+  This decision changes what the eventual paywall gates, not the fact that
+  no paywall can go live yet regardless.
+
+  **Not yet done**: actually building the gate (currently
+  `ReportAuthGateModal` only checks for a logged-in account, not a paid
+  subscription — it will need a real "is this user on Core paid" check
+  once Stripe exists) and updating `pricing/page.js`'s copy, which was
+  already stale before this change and is now further out of date.
 
 ## Next up
 
