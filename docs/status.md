@@ -646,11 +646,12 @@ before the relocation — read them as "this repo," not literally `back`.
    `DB_PASS`/`config/database.js` and the unused `EMAIL_USER`/`EMAIL_PASS`/
    `Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins` vars from
    `swales-backend` — flagged, not removed, during the hygiene pass.
-10. `main` now has branch protection (no force-push/deletion, required
-   status check = the Neon migration job) — worth deciding if "require a
-   pull request before merging" should be turned on too, now that the PR
-   workflow is well-established; left off for now since this session still
-   mixed in some direct-to-main doc pushes.
+10. ~~`main` branch protection: decide "require a pull request before
+   merging".~~ **Decided 2026-08-26: yes, always** — see `future-concerns.md`
+   item 12 for the reason (the per-PR Neon migration check gets bypassed
+   entirely on a direct push, confirmed live). Omar is flipping the actual
+   GitHub toggle himself. From here on: backend changes go to a branch with
+   a PR for Omar to merge, not pushed straight to `main`.
 11. Optional, not blocking anything: file a Vercel Support ticket about the
    stuck "already connected" error in the Neon integration's "Connect a
    Project" dialog, if the native Vercel-Neon branching (vs. the
