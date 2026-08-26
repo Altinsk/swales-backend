@@ -222,10 +222,18 @@ before the relocation — read them as "this repo," not literally `back`.
   `DATABASE_URL_DEV_BRANCH` per `config/config.json`, no manual override
   needed for the migration step (only `seedElements.js` needs the
   override, since it reads `DATABASE_URL` directly via `models/index.js`
-  rather than through sequelize-cli's env-aware config). Still open: all
-  frontend canvas wiring — the designer app still only reads the static
-  `presets.json`, nothing reads `/api/elements` or resolves `icon_key`
-  yet.
+  rather than through sequelize-cli's env-aware config). **Paused as of
+  2026-08-25, not forgotten** — see `future-concerns.md` item 11 for the
+  full reason (short version: the plant DB has zero images, merging now
+  would render every species as a generic placeholder). The code for this
+  (`models/element.js`, `scripts/seedElements.js`, `scripts/validateSeed.js`,
+  `seed-data/plants_seed.csv`, `seed-data/schema.md`, and the untracked
+  `migrations/20260825010000-add-layer-to-elements.js`) is still sitting
+  uncommitted in the local working tree as of 2026-08-26 — functionally
+  complete and already applied to the Neon dev branch, just not committed,
+  precisely because the frontend wiring it enables is paused. Same story on
+  the designer side for `public/presets.json`'s `food-forest-layers`
+  restructuring (verified working 2026-08-25, also uncommitted).
 - **Roadmap**: `docs/roadmap.md` is the merged, canonical Phase 0→F plan
   (106 items total after adding Phase 0). `docs/roadmap_backlog.xlsx` is
   the matching live tracker with a `Status` column. `swales-designer/CLAUDE.md`

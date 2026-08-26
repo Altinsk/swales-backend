@@ -91,9 +91,35 @@ deferred** that carry real risk if ignored too long.
     `good_companions`. Subcategory vocabulary also has ~65 near-duplicate
     values needing cleanup.~~ Done 2026-08-24 — see `status.md`.
 
-11. **Canvas not wired to the real plant database.** `swales-designer`
-    still reads a static `presets.json` — nothing calls `/api/elements` or
-    resolves `icon_key` yet, despite the schema/API/seed data existing.
+11. **PAUSED (decided 2026-08-25, not abandoned): canvas not wired to the
+    real plant database.** `swales-designer` still reads a static
+    `presets.json` — nothing calls `/api/elements` or resolves `icon_key`
+    yet. Reason: the plant DB has **zero images** — each row's `icon_key`
+    (e.g. `icon_tree_walnut`) is meant to point at real art, but no such
+    files exist anywhere in `swales-designer/public/objects/` (confirmed by
+    direct search). Merging today would render every DB species as one
+    generic per-category placeholder shape, not a distinct picture — Omar
+    also rejected a "smart" badge on merged items with no real logic behind
+    it as confusing UI. **Waiting on**: Omar sourcing/creating a real image
+    per `icon_key` (54 tree species already handed off as a worked example;
+    the same breakdown can be pulled for the other 8 categories from
+    `seed-data/plants_seed.csv` on request). **Once images exist**: merge
+    unbadged into the already-restructured `food-forest-layers` palette in
+    `swales-designer/public/presets.json` (verified working 2026-08-25, no
+    further redesign needed) — actual guild-builder/badge logic is
+    deliberately deferred further, to Phase 2/W, on top of that.
+    Two local, uncommitted changesets are sitting in the working tree
+    specifically because of this pause, not because they were forgotten:
+    `swales-backend` (`models/element.js`, `scripts/seedElements.js`,
+    `scripts/validateSeed.js`, `seed-data/plants_seed.csv`,
+    `seed-data/schema.md`, and the untracked
+    `migrations/20260825010000-add-layer-to-elements.js`) add the `layer`
+    field the merge will key off of — already applied to and re-seeded on
+    the Neon dev branch, just not committed; and `swales-designer`
+    (`public/presets.json`) holds the `food-forest-layers` restructuring
+    described above. Both are functionally complete and safe to commit
+    independently of the pause if that's ever useful, but committing them
+    doesn't unblock anything — the merge itself waits on the images.
 
 ### Infrastructure
 
