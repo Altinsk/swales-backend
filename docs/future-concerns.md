@@ -61,13 +61,18 @@ deferred** that carry real risk if ignored too long.
 
 ### Product / business decisions pending
 
-6. **Monetization framework — Decided 2026-08-24** (Priestley 4-product
-   ladder, see `status.md` for full detail), **but two things still
-   open**: actual subscription price points haven't been set (a separate
-   decision from the framework shape), and `swales-services/src/app/pricing/page.js`'s
-   copy still shows the old pre-decision aspirational tier sketch — worth
-   updating before this is communicated externally, not urgent since
-   nothing is purchasable yet (blocked on Stripe/bank account regardless).
+6. **Monetization framework — Decided 2026-08-24, revised 2026-08-27**
+   (Priestley 4-product ladder, see `status.md` for full detail). The full
+   site analysis report now requires payment (Core paid), not just an
+   account (free-for-contact) — only design/canvas downloads stay
+   free-for-contact. **Three things still open**: (1) the actual selling
+   mechanism for a single-location report — subscription-only, one-time
+   purchase, or both — not yet decided; (2) actual subscription/purchase
+   price points haven't been set; (3) `swales-services/src/app/pricing/page.js`'s
+   copy still shows the old pre-decision aspirational tier sketch and is
+   now further out of date — worth updating before this is communicated
+   externally, not urgent since nothing is purchasable yet (blocked on
+   Stripe/bank account regardless).
 
 7. **Wind turbine sizing** — decide whether to use real wind-speed data
    vs. the current stub that matches `wind.txt` verbatim (including an
