@@ -123,11 +123,21 @@ deferred** that carry real risk if ignored too long.
 
 ### Infrastructure
 
-12. **`main` branch protection**: decide whether to turn on "require a PR
-    before merging" now that the PR workflow is well-established (currently
-    only a required status check is enforced; direct pushes to `main` are
-    still possible and have happened, including doc-only pushes this
-    session).
+12. ~~**`main` branch protection**: decide whether to turn on "require a PR
+    before merging".~~ **Decided 2026-08-26: yes, always.** Reason: this
+    repo's `.github/workflows/neon_workflow.yml` gives every PR its own
+    isolated Neon DB branch and runs migrations against it as a required
+    status check before merge — a direct push to `main` skips that check
+    entirely (confirmed live: a direct push this session printed `Bypassed
+    rule violations... Required status check "Create Neon Branch and Run
+    Migrations" is expected`), meaning a migration could land on `main`
+    completely untested. Omar is enabling the actual GitHub "require PR
+    before merging" toggle himself (Settings → Branches on
+    `swales-backend`). Going forward, backend changes get pushed to a
+    branch with a PR opened for Omar to review/merge, never pushed straight
+    to `main` — this applies to `swales-backend` specifically, since
+    `swales-designer`/`swales-services` have no equivalent per-PR DB
+    validation workflow.
 
 13. **Vercel Support ticket** for the stuck "already connected" error in
     Neon's native "Connect a Project" dialog — optional, only matters if
