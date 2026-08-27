@@ -717,6 +717,53 @@ before the relocation — read them as "this repo," not literally `back`.
   "before launch whenever possible" instead (see `future-concerns.md`
   items 2, 3, 9).
 
+- **Wind turbine sizing — real wind-speed-aware, 2026-08-27.** Omar asked
+  for a proposal before any code changed. Investigated first:
+  `autoSelectTurbine()` (`swales-services/src/lib/wind/windCalculationEngine.js`)
+  took a `meanWindSpeed` parameter it never actually used — it sized a
+  turbine purely from `demand / category` against an optimistic "excellent"
+  capacity factor, so a great-wind site and a mediocre-wind site in the
+  same category always got the exact same recommendation. The energy
+  *output* number shown afterward (`calculateAnnualEnergy`) already
+  correctly derated using the site's real capacity factor
+  (`min(windPowerDensity / 600, CF_EXCELLENT[category])`) — only the
+  sizing step ignored it.
+
+  **Proposed and agreed**: reuse that same real, site-derived capacity
+  factor in the sizing formula too, rather than inventing a new model or
+  pulling in new data — a below-excellent site now needs a bigger turbine
+  to hit the same demand target, exactly mirroring what the energy number
+  already implied. The one thing this makes unavoidable: if even the
+  *largest* available turbine in a category can't meet demand once the
+  real capacity factor is used, that can no longer be silently papered
+  over the way the old code did (`return found || turbines[turbines.length - 1]`
+  with no signal either way).
+
+  **Built**: `autoSelectTurbine(category, windPowerDensity)` now returns
+  `{ size, insufficient }` instead of a bare number.  `WindDashboard.jsx`
+  destructures both and shows a small amber warning under the "Recommended
+  Setup" tiles when `insufficient` is true ("Even the largest {category}
+  turbine option may not fully cover your target demand at this site's
+  real wind resource — consider a larger category, solar/storage hybrid,
+  or grid backup"). Only one caller existed, so this was a fully contained
+  change.
+
+  **Verified live**: a real Moderate-wind home site (75 W/m² power
+  density) now correctly recommends a 5kW turbine — hand-calculated and
+  confirmed against the new formula (`CF_actual = min(75/600, 0.18) =
+  0.125` → `requiredPower ≈ 3.65kW` → smallest turbine ≥ that is 5kW).
+  Before this fix, every "home" category site was recommended 3kW
+  regardless of its real wind resource (the old formula assumed
+  `CF_EXCELLENT = 0.18` was always achievable). The displayed Annual Yield
+  (4.9 MWh/Year) also matches `calculateAnnualEnergy(5, 'home', 75)`
+  exactly, confirming both numbers are now internally consistent. Did not
+  manage to trigger the `insufficient` warning path in this browser
+  session (switching categories via the UI didn't register reliably in
+  this automated test environment, a recurring limitation this session —
+  not something wrong with the fix) — worth a manual spot-check on an
+  Industrial-category, very-low-wind site next time someone's in the app
+  directly.
+
 ## Next up
 
 1. **Mobile stack — confirmed by Omar (2026-08-24).** React Native + Expo

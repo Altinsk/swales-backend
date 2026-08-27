@@ -80,10 +80,12 @@ deferred** that carry real risk if ignored too long.
    externally, not urgent since nothing is purchasable yet (blocked on
    Stripe/bank account regardless).
 
-7. **Wind turbine sizing** — decide whether to use real wind-speed data
-   vs. the current stub that matches `wind.txt` verbatim (including an
-   unused `meanWindSpeed` parameter). Low severity, deliberately
-   unchanged pending a decision.
+7. ~~**Wind turbine sizing** — decide whether to use real wind-speed data
+   vs. the current stub.~~ **Done 2026-08-27** — see `status.md` and
+   `roadmap.md` for full detail. `autoSelectTurbine` now uses the site's
+   real capacity factor instead of always assuming the optimistic
+   "excellent" case; surfaces a warning when even the largest available
+   turbine can't meet demand at the real site.
 
 ### Technical debt / cleanup
 
@@ -179,3 +181,12 @@ deferred** that carry real risk if ignored too long.
   (`swales-designer`, `swales-services`) no longer read/write the token via
   `localStorage` or send an `Authorization` header — everything rides the
   cookie via `withCredentials: true`.
+
+- **Wind turbine sizing now uses real wind-speed data** — Done 2026-08-27.
+  See `status.md`/`roadmap.md` for full detail: `autoSelectTurbine` in
+  `swales-services/src/lib/wind/windCalculationEngine.js` was ignoring the
+  `meanWindSpeed` parameter it took, sizing purely off category and an
+  optimistic capacity factor. Fixed to use the same site-derived capacity
+  factor `calculateAnnualEnergy` already used for the energy-output number,
+  and surfaces a warning when even the largest available turbine in a
+  category can't meet demand at the real site.
