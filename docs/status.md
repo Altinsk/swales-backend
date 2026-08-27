@@ -579,6 +579,106 @@ before the relocation — read them as "this repo," not literally `back`.
   once Stripe exists) and updating `pricing/page.js`'s copy, which was
   already stale before this change and is now further out of date.
 
+- **Shared site-data cache (roadmap's "Pinpoint global data extraction") —
+  in progress, 2026-08-27.** Investigated first: the map
+  (`swales-services/src/components/map/MapComponent.jsx`, ~4,500 lines) had
+  no shared data layer at all — each of 9 external datasets was fetched
+  independently from up to 3-4 separate call sites (an address-search
+  handler, a mount/activation effect, a click/drag handler, and sometimes a
+  dedicated lib-module function), with zero coordination between them.
+  Switching tabs or revisiting a pin always re-fetched everything from
+  scratch. Decided direction: **lazy + shared cache** — keep today's
+  fetch-on-view-only behavior (no new eager fetching, no increase in API
+  call volume), just dedupe so the same dataset for the same location is
+  never fetched twice in one session.
+
+  Built `swales-services/src/lib/map/siteDataCache.js` — a plain
+  module-level `Map` cache (not React Context, since roughly half the call
+  sites are non-component lib modules with no natural hook access) keyed by
+  dataset name + rounded lat/lng, storing the **in-flight Promise** (not
+  just the resolved value) so near-simultaneous calls from different call
+  sites collapse into one real fetch instead of both racing to the
+  network. Wired in phase by phase, verified live in the browser after
+  each: **solar, soil** (soil turned out to have a 4th call site inside
+  `lib/map/soilLayer.js` — found only because the plan said to grep for
+  every call site rather than assume a count, not by memory), **wind
+  planning, water stress, flood risk**, and **elevation/geocode/
+  precipitation** (the biggest win — these are shared across the most call
+  sites, including `updateLocationAndTimeGeoInfo`, which runs on every
+  click/drag on every map page regardless of active layer).
+
+  **Real debugging detour, worth recording:** wind planning appeared
+  completely broken during verification — no network request ever showed
+  up in the browser's network log, no error either. Root cause turned out
+  to be a blind spot in the verification method, not the code: `windService.js`
+  calls its data sources via `axios`, which the browser executes as
+  `XMLHttpRequest`, and the browser tool's network inspector wasn't
+  capturing those (unlike the `fetch()`-based calls solar/soil's proxy
+  routes use). Confirmed via temporary console logging (added, verified,
+  then fully removed) that the fetch was succeeding the whole time — GWA
+  and ERA5 both responded 200, and despite ~7 re-renders of the triggering
+  effect, the real fetch only fired once, proving the cache worked
+  correctly. Lesson for next time: this app's data services are a mix of
+  `axios` and `fetch()` — don't conclude "nothing happened" from an empty
+  network-request list alone; check console/application-level evidence too.
+
+  **Report generation wired to the same cache.** `combinedReportPdf.js`'s
+  `generateCombinedReport` was calling `fetchSolarData`,
+  `fetchAllWindData`, `fetchSoilData`, `fetchAltitude`/`getLocationName`,
+  `fetchWaterStressData`, `fetchFloodRiskData`, and `fetchPrecipitation`
+  directly, bypassing the cache — every report regeneration re-fetched all
+  7, even on the exact same spot. Now wrapped through the same
+  `getOrFetch`, same dataset keys as the map — a report that reuses
+  already-browsed tabs' data is free, and regenerating the same report is
+  free; a cold "Generate Report" with no prior browsing still costs the
+  same as before (a full report always needs full data; the cache only
+  removes *redundant* fetching, not the first one).
+
+  **Real gap found and fixed along the way, not part of the original
+  plan:** Omar asked "where is Sun in this report?" — turned out the Sun
+  Tracking section was only in the report if `sunTrackerDetails` happened
+  to already be populated in React state, which only happens if the user
+  visited the Sun Tracking tab first. Since sun position (dawn/sunrise/
+  culmination/sunset/dusk/azimuth/altitude/shadow length) is a pure local
+  calculation (`calculateSunDetails`/`getSunDistance` in
+  `lib/map/sunCalculations.js` — no API call, no cost), there was no reason
+  for it to depend on prior browsing. Fixed: it's now always computed fresh
+  at report time, same as every other section — field-mapped to match
+  `updateSunInfo`'s existing shape exactly (`daylightDurationData` →
+  `DaylightDuration`, `getSunDistance()` called with no date argument,
+  matching that function's own behavior).
+
+  **Explicitly excluded, per Omar's call:** weather forecast — not wrapped
+  in the cache, not added to the report. It changes constantly, so caching
+  it doesn't make sense and it was already correctly excluded from the
+  report as a "live/current-moment" thing.
+
+  **Not yet built:** contour-in-report — reuse an already-drawn rectangle
+  and its result if the user ran contour analysis this session; otherwise
+  prompt for an interval (same 1/2/5/10/20/50/100m options the manual UI
+  already uses) and auto-generate a ~150-200m box around the pin, labeled
+  as approximate. Decided but not implemented yet.
+
+  **To test before final validation** (not yet done, needs a logged-in
+  session):
+  - Generate a report on a fresh pin with **no prior tab browsing** —
+    confirm the Sun section now appears (previously would have silently
+    been missing).
+  - Browse a couple of tabs (e.g. Solar, Soil) for a pin, then generate a
+    report — confirm those two datasets are *not* re-fetched (check
+    Network tab, remembering axios-based calls won't show there — check
+    console/timing instead, or temporarily re-add the cache hit/miss
+    logging used during phase 6's verification).
+  - Regenerate the same report a second time — confirm zero new fetches
+    for any dataset.
+  - This needs an actual login. `swales-services`' local dev server talks
+    to the **deployed** `swales-backend.vercel.app`, not a local backend
+    pointed at the Neon dev branch — so creating a throwaway test account
+    to do this writes to the real deployed backend's database, unlike the
+    cookie-migration testing earlier, which used an isolated dev branch.
+    Omar declined to do this test right now; flagged here instead of
+    skipped silently.
+
 ## Next up
 
 1. **Mobile stack — confirmed by Omar (2026-08-24).** React Native + Expo
