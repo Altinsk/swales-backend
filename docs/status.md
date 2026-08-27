@@ -653,11 +653,25 @@ before the relocation — read them as "this repo," not literally `back`.
   it doesn't make sense and it was already correctly excluded from the
   report as a "live/current-moment" thing.
 
-  **Not yet built:** contour-in-report — reuse an already-drawn rectangle
-  and its result if the user ran contour analysis this session; otherwise
-  prompt for an interval (same 1/2/5/10/20/50/100m options the manual UI
-  already uses) and auto-generate a ~150-200m box around the pin, labeled
-  as approximate. Decided but not implemented yet.
+  **Contour-in-report — built, 2026-08-27.** `generateCombinedReport` now
+  takes an optional `contourInterval`. Priority order: if the user already
+  drew and analyzed a rectangle this session (`contourAnalysisSummary`
+  already set), that exact result is reused as-is — unchanged from before.
+  Otherwise, a new `ContourIntervalPromptModal`
+  (`swales-services/src/components/ui/ContourIntervalPromptModal.jsx`,
+  mirroring `ReportAuthGateModal`'s existing style) appears when
+  "Generate Report" is clicked with no contour analysis yet — same
+  1/2/5/10/20/50/100m options as the manual "Analyze" dropdown, plus a
+  "Skip this section" option. Whichever interval is picked, a
+  `fetchApproximateContourSummary` helper auto-draws a ~175m box around the
+  pin (same fixed-degree-delta approximation `windService.js`'s
+  `generatePolygonPayload` already uses, for consistency) and hits the same
+  `/api/proxy/contour-analysis` endpoint the manual flow uses, run through
+  `getOrFetchContour` (already built into `siteDataCache.js` alongside
+  `getOrFetch`, keyed by bounding box + interval since contour is
+  area-based). The report clearly labels this case — `contourIsApproximate`
+  flows through to `CombinedReportContent`'s section subtitle: "...an
+  approximate area around the pin — not your exact property boundary."
 
   **To test before final validation** (not yet done, needs a logged-in
   session):
@@ -671,6 +685,14 @@ before the relocation — read them as "this repo," not literally `back`.
     logging used during phase 6's verification).
   - Regenerate the same report a second time — confirm zero new fetches
     for any dataset.
+  - Generate a report on a pin with no contour analysis done yet — confirm
+    `ContourIntervalPromptModal` appears, picking an interval produces a
+    contour section labeled as approximate, and "Skip this section" omits
+    it entirely with no error.
+  - Manually draw and analyze a real contour rectangle first, then generate
+    a report for that same pin — confirm the report reuses that exact
+    result (no prompt, no new fetch, and the subtitle does *not* say
+    "approximate").
   - This needs an actual login. `swales-services`' local dev server talks
     to the **deployed** `swales-backend.vercel.app`, not a local backend
     pointed at the Neon dev branch — so creating a throwaway test account
