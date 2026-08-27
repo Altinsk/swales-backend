@@ -37,11 +37,17 @@ deferred** that carry real risk if ignored too long.
    Recommend TOTP-based 2FA (not SMS — costs money, SIM-swap risk), target
    completion **before monetization go-live**, not necessarily before the
    monetization framework is decided. Added to roadmap 2026-08-24.
+   **Scheduling decided 2026-08-27**: do whenever there's time before the
+   actual relaunch — not one of the hard launch-blocking gates (see
+   `roadmap.md`'s Guiding directives, directive 3, for what those actually
+   are), just something to fit in beforehand if possible.
 
 3. **No disposable/temporary email blocking at registration.** —
    *Severity: Low.* Combined with (now-fixed) rate limiting, this closes
    off using throwaway addresses to spam-create accounts. Added to
    roadmap 2026-08-24 per Omar's request, not yet implemented.
+   **Scheduling decided 2026-08-27**: same as 2FA above — before launch
+   whenever possible, not a hard gate.
 
 4. **No resend-verification-email endpoint.** — *Severity: Low.*
    Verification links now expire in 24h (down from an accidental 30 days,
@@ -90,7 +96,8 @@ deferred** that carry real risk if ignored too long.
 9. **Plant/element schema not yet reconciled with the long-term
    knowledge-graph vision** (~50-field schema, linked entity types). Worth
    a short pass now so early seed data doesn't need re-keying once that
-   2-3 year vision gets built.
+   2-3 year vision gets built. **Scheduling decided 2026-08-27**: before
+   launch whenever possible, not a hard launch-blocking gate.
 
 10. ~~**Companion-planting data incomplete**: 107 of 171 species have empty
     `good_companions`. Subcategory vocabulary also has ~65 near-duplicate

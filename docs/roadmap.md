@@ -85,11 +85,23 @@ from here on, not just sit as one more backlog row:
    get the updated rebuild live sooner rather than later, and continue
    Phase A-onward development against the live app afterward instead of in
    isolation. This changes the cutover criterion from "fully done" to
-   "stable enough for real users" — needs a concrete go/no-go checklist
-   (auth security posture, migration safety, monitoring) before an actual
-   cutover date gets picked. Not yet scoped into a checklist; next
-   session/planning pass should turn this into concrete pre-launch
-   must-haves rather than leaving it as a general intention.
+   "stable enough for real users."
+
+   **Pre-launch checklist — decided 2026-08-27, the only two hard gates:**
+   1. **Plant images done** — the paused canvas merge (`future-concerns.md`
+      item 11): the plant DB has zero per-species art, so the designer
+      canvas can't wire up to `/api/elements` until real images exist for
+      at least the species being merged. **In progress** — Omar is
+      sourcing/creating them.
+   2. **Business bank account opened → Stripe wired** — needed for the
+      paid report tier (see the monetization decision above) to actually
+      go live, not just be decided. **Not started.**
+
+   Everything else flagged as "before launch, whenever possible" (2FA,
+   disposable-email blocking, plant/element schema reconciliation — see
+   `future-concerns.md` items 2, 3, 9) is explicitly **not** a launch
+   gate — worth fitting in if there's time, but the cutover doesn't wait
+   on them.
 
 ## The split logic: why web and mobile do different jobs
 
