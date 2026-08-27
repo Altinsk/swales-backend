@@ -701,6 +701,22 @@ before the relocation — read them as "this repo," not literally `back`.
     Omar declined to do this test right now; flagged here instead of
     skipped silently.
 
+- **Report section-selection — considered, declined, 2026-08-27.** Came up
+  when discussing whether a user could choose which categories (solar,
+  wind, soil, etc.) go into a generated report. Decided: no — the report
+  stays all-or-nothing (every dataset is always attempted; a section only
+  appears if that fetch actually returns data). Not building a
+  selection UI for this, at least to start with.
+
+- **Pre-launch checklist — decided 2026-08-27.** See `roadmap.md`'s
+  Guiding directives, directive 3, for the full record: the only two hard
+  launch-blocking gates are (1) plant images done (in progress) and (2) a
+  business bank account opened so Stripe can be wired for the paid report
+  tier (not started). 2FA, disposable-email blocking, and the plant/element
+  schema reconciliation are explicitly **not** launch gates — scheduled as
+  "before launch whenever possible" instead (see `future-concerns.md`
+  items 2, 3, 9).
+
 ## Next up
 
 1. **Mobile stack — confirmed by Omar (2026-08-24).** React Native + Expo
