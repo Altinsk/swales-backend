@@ -7,7 +7,119 @@ left off."
 
 ## Last updated
 
-2026-08-27
+2026-08-28
+
+## Test domain: permaculturetools.online (2026-08-27, in progress)
+
+Omar bought `permaculturetools.online` to test the live rebuild end-to-end
+without touching `swales.app` (still serving the old `SwalesApp\back` site).
+Plan: mirror the eventual `swales.app`/`designer.swales.app`/`api.swales.app`
+structure — root domain → `swales-services`, `designer.` → `swales-designer`,
+`api.` → `swales-backend`. Once verified, `swales.app` gets cut over the same
+way (whether the test domain then redirects to `swales.app` or stays live is
+explicitly **not decided yet**).
+
+**Done so far (code side, no external accounts touched):**
+- Both frontends now default every deployment to `X-Robots-Tag: noindex,
+  nofollow` (`swales-services/next.config.mjs`, `swales-designer/next.config.ts`),
+  gated on a new `ALLOW_INDEXING` env var (unset = noindex). This was a real
+  gap, not just caution: `swales-services/src/app/robots.js` allows crawling
+  from everyone, and a new domain's SSL cert shows up in public
+  certificate-transparency logs within minutes of issuance regardless of
+  whether it's ever submitted to Search Console — "I won't tell Google about
+  it" doesn't actually stop discovery. Verified live: `curl -I` against a
+  local dev server confirmed the header is present by default.
+- `swales-backend/server.js`'s CORS allowlist now includes
+  `https://permaculturetools.online`, `https://www.permaculturetools.online`,
+  `https://designer.permaculturetools.online` (additive, doesn't affect
+  existing origins).
+- `roadmap.md`'s "Field Calculators" row scope decided: includes
+  earthworks-sizing tools (swale volume/dimensions, terrace spacing/cut-fill)
+  — not broken into individual backlog items yet.
+
+**Still open, needs Omar (external accounts, can't be done unattended):**
+1. **Namecheap DNS** — point `permaculturetools.online` at Vercel. Simplest:
+   switch nameservers to Vercel's (`ns1.vercel-dns.com`/`ns2.vercel-dns.com`)
+   via Namecheap's Domain → Nameservers → Custom DNS, since 3 subdomains
+   across 3 separate Vercel projects is more records than manually managing
+   A/CNAME entries in Namecheap is worth. If keeping Namecheap DNS instead:
+   apex (`@`) → A record → `76.76.21.21`; `www`/`designer`/`api` → CNAME →
+   `cname.vercel-dns.com.` (Vercel's domain-add screen shows the exact
+   values to use — follow those over this note if they differ).
+2. **Vercel → Domains**, one add per project: `swales-services` gets
+   `permaculturetools.online` + `www.permaculturetools.online`;
+   `swales-designer` gets `designer.permaculturetools.online`;
+   `swales-backend` gets `api.permaculturetools.online`. Vercel issues SSL
+   automatically once DNS resolves.
+3. **Vercel → Environment Variables** (Production), per project — note this
+   changes behavior on the existing `*.vercel.app` URLs too, since it's the
+   same Production environment/deployment serving both:
+   - `swales-services`: `NEXT_PUBLIC_API_BASE_URL=https://api.permaculturetools.online/api`,
+     `NEXT_PUBLIC_APP_BASE_URL=https://permaculturetools.online`,
+     `NEXTAUTH_URL=https://permaculturetools.online`
+   - `swales-designer`: `NEXT_PUBLIC_API_URL=https://api.permaculturetools.online/api`,
+     `NEXT_PUBLIC_APP_BASE_URL=https://designer.permaculturetools.online`,
+     `NEXTAUTH_URL=https://designer.permaculturetools.online`
+   - `swales-backend`: `SWALES_APP_URL=https://permaculturetools.online`,
+     `DESIGNER_APP_URL=https://designer.permaculturetools.online`,
+     `BASE_URL=https://api.permaculturetools.online`, `CLIENT_URL=https://designer.permaculturetools.online`
+   - Leave `ALLOW_INDEXING` unset on both frontends — this domain should
+     stay out of the index while it's a test surface.
+4. **Neon — nothing needed.** Checked: Neon has no domain-name-based config
+   at all. `DATABASE_URL` connections are host/IP-based, not tied to which
+   domain the frontend runs on, and the existing Neon-GitHub branch-per-PR
+   integration (`.github/workflows/neon_workflow.yml`) is scoped to the repo,
+   not to a deployed domain. Nothing to do here for this domain swap.
+5. **Google Cloud Console — deferred, not needed right now (Omar's call,
+   2026-08-27).** Skipping the OAuth client update for now means **Google
+   sign-in will not work on `permaculturetools.online` yet** — clicking it
+   will fail or redirect wrong, since the domain isn't in the OAuth client's
+   authorized origins/redirect URIs. Fine as long as testing doesn't depend
+   on Google sign-in specifically; native email/password sign-in is
+   unaffected (no OAuth involved). Revisit when needed: add Authorized
+   JavaScript origins `https://permaculturetools.online` and
+   `https://designer.permaculturetools.online`; add Authorized redirect URIs
+   `https://permaculturetools.online/api/auth/callback/google` and
+   `https://designer.permaculturetools.online/api/auth/callback/google`
+   (NextAuth's standard callback path).
+6. **Verify once DNS/domains are live**: each of the 3 subdomains loads over
+   HTTPS with a valid cert (no browser warning) and `curl -I` confirms
+   `X-Robots-Tag: noindex` is present. Google sign-in is *not* expected to
+   work yet (see item 5) — don't treat that as a bug during this pass.
+
+## Cutover stage: swapping in swales.app (future, not yet scheduled)
+
+Not started — recorded now so it isn't lost. Whenever Omar decides to point
+the real `swales.app` domain at this rebuild (retiring the old `SwalesApp\back`
+site), the following all need doing together, mirroring everything done above
+but for `swales.app`/`designer.swales.app`/`api.swales.app` instead of
+`permaculturetools.online`:
+
+1. Add `swales.app`/`www.swales.app` to `swales-services`,
+   `designer.swales.app` to `swales-designer`, `api.swales.app` to
+   `swales-backend` in Vercel → Domains (same as the permaculturetools.online
+   steps above). CORS already allows these — added preemptively, see
+   `server.js`'s `corsOptions.origin`.
+2. Update the same Production env vars (`NEXT_PUBLIC_API_BASE_URL`,
+   `NEXTAUTH_URL`, `SWALES_APP_URL`, `DESIGNER_APP_URL`, `BASE_URL`,
+   `CLIENT_URL`, etc.) to the `swales.app` URLs.
+3. **Flip the noindex guard**: set `ALLOW_INDEXING=true` in Vercel's
+   Production env vars for `swales-services` and `swales-designer` — see the
+   `TODO at the swales.app cutover` comment in each repo's `next.config`.
+   Don't remove the guard code itself; it should keep defaulting non-canonical
+   domains (any future staging/test domain) to noindex even after this.
+4. Actually do the deferred Google Cloud Console step (item 5 above) for the
+   real `swales.app` domains, not just the test ones.
+5. **Decide what happens to `permaculturetools.online` afterward** — still
+   open per Omar: redirect it to `swales.app`, or leave it live as a
+   separate/standing test surface. Whichever is chosen, if it stays live it
+   should stay noindexed (guard already defaults that way — nothing extra
+   needed unless it's deliberately given `ALLOW_INDEXING=true` too, which
+   would create a duplicate-content risk with `swales.app` — avoid that).
+6. Point DNS at Namecheap for `swales.app` the same way as
+   `permaculturetools.online` (nameservers or A/CNAME to Vercel) if not
+   already done — `swales.app` currently still resolves to the old
+   `SwalesApp\back` site.
 
 ## New directives from Omar (2026-08-26) — see `roadmap.md`'s "Guiding directives" section for full detail
 
@@ -115,36 +227,41 @@ neither frontend was actually using.
   frontends and could eventually be removed once we're confident nothing
   else depends on it.
 
-## BLOCKING before the next push to this repo
+## Corrected 2026-08-28: the old "BLOCKING" migration note was stale
 
-Two local commits (`Invalidate sessions on password change...` and `Fix
-verification-token leak, add auth rate limiting...`) add a
-`Users.PasswordChangedAt` column reference used on every login and every
-protected-route request. **Confirmed locally: running the app against a
-database that doesn't have this column crashes on every login/protected
-request** (`SequelizeDatabaseError: column "PasswordChangedAt" does not
-exist` — read-only query, nothing was corrupted, but the request fails).
+This section used to warn that `Invalidate sessions on password change...`
+and `Fix verification-token leak, add auth rate limiting...` were **local,
+unpushed** commits adding a `Users.PasswordChangedAt` column, and that Omar
+needed to run the production migration *before* pushing them or every login
+would break.
 
-The migration (`migrations/20260824010000-add-password-changed-at-to-users.js`)
-is already applied to the Neon **dev branch** (`DATABASE_URL_DEV_BRANCH`) —
-tested there, confirmed working. It is **not yet applied to whatever
-`DATABASE_URL` points to** (the database `swales-backend.vercel.app`
-actually runs on — confirmed via `models/index.js`, which uses
-`DATABASE_URL` directly whenever it's set, regardless of `NODE_ENV`; this
-is a different Neon endpoint than `DATABASE_URL_DEV_BRANCH`). Per the
-established pattern from the `Users.Email` constraint dedupe earlier this
-month, the auto-mode classifier blocks any `sequelize-cli --env production`
-command, including read-only status checks — **Omar needs to run this one
-himself**:
+That was already out of date by the time it was re-read on 2026-08-28: both
+commits had actually been sitting on `origin/main` since **2026-08-24** —
+four days, with a full week of other work merged on top — and this note was
+simply never updated to reflect that the push had already happened.
 
-```powershell
-cd swales-backend
-$env:NODE_ENV = "production"; npx sequelize-cli db:migrate
-```
+**No outage actually occurred.** Confirmed 2026-08-28 by running the
+production migration command this note itself specified
+(`NODE_ENV=production npx sequelize-cli db:migrate`): it skipped straight to
+`20260825010000-add-layer-to-elements` without touching
+`20260824010000-add-password-changed-at-to-users` at all — proof the
+password-column migration was already applied to production before this
+check ever ran (Sequelize runs pending migrations in timestamp order, so it
+would have run the password one first had it still been pending).
 
-Run that *before* (or in the same breath as) pushing these two commits to
-`origin/main` — pushing first would break every login on the deployed
-backend until the migration catches up.
+**Side effect of that same run**: `20260825010000-add-layer-to-elements` —
+previously applied only to the Neon **dev branch** — is now also applied to
+**production**. Purely additive (a `layer` enum column on `Elements`,
+already proven on dev), doesn't unblock the canvas merge (still paused on
+real per-species images, see `future-concerns.md` item 11), but production's
+schema and the dev branch's are now back in sync on this column. The
+migration file itself is now committed too — see the
+`chore/commit-layer-field-code` PR.
+
+**Lesson for next time**: a "BLOCKING before next push" note needs to be
+deleted or corrected the moment the referenced push actually happens —
+leaving it in place after the fact makes it silently misleading instead of
+protective.
 
 ## Doc relocation note
 
@@ -832,3 +949,12 @@ before the relocation — read them as "this repo," not literally `back`.
    stuck "already connected" error in the Neon integration's "Connect a
    Project" dialog, if the native Vercel-Neon branching (vs. the
    GitHub-integration workaround now in place) is ever wanted instead.
+12. **On hold until Omar creates the accounts (2026-08-27):** Substack icon
+   added to `swales-services/src/components/ui/Footer.jsx`'s social-icons
+   list (`fa-brands fa-square-substack`), placeholder `href="#"` — swap in
+   the real newsletter link once the Substack account is created. Same
+   status noted for **Discord**: the icon already existed in that list with
+   a placeholder `href="#"`, but had no real invite link either — flagging
+   it here alongside Substack so both get fixed together once Omar has both
+   account/invite links in hand. No code change needed beyond pasting the
+   two URLs into `Footer.jsx` when ready.

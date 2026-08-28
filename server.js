@@ -27,6 +27,11 @@ const corsOptions = {
     "https://designer.swales.app",
     "https://swales-designer.vercel.app",
     "https://swales-services.vercel.app",
+    // permaculturetools.online: test domain used to verify the rebuild
+    // live before cutting swales.app over to it (2026-08-27).
+    "https://permaculturetools.online",
+    "https://www.permaculturetools.online",
+    "https://designer.permaculturetools.online",
   ],
   credentials: true,
 };
