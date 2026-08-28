@@ -226,7 +226,7 @@ necessarily editable) from both places.
 | Mushrooms reference pages | List B | both | Could | Same schema. |
 | Materials reference/catalog | List B | both | Could | — |
 | Energy Calculators | List B | both | Should | Contained scope, good quick win once content team has capacity. |
-| Field Calculators | List B | both | Should | — |
+| Field Calculators | List B | both | Should | Scope decided 2026-08-27: includes earthworks-sizing tools (swale volume/dimensions, terrace spacing/cut-fill, etc.), not yet broken into individual items. |
 | Books and magazines library | List B | both | Could | — |
 | Resources library | List B | both | Could | Overlaps books_magazines — consider one unified library section. |
 | Ideas (inspiration gallery) | List B | both | Could | Overlaps design_gallery below — merge if possible. |
