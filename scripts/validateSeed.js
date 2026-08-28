@@ -22,7 +22,7 @@ const path = require("path");
 const { parse } = require("csv-parse/sync");
 
 const EXPECTED_COLUMNS = [
-  "id", "common_name", "scientific_name", "category", "subcategory",
+  "id", "common_name", "scientific_name", "category", "subcategory", "layer",
   "climate_zone", "hardiness_zone", "functions", "mature_height_m",
   "mature_spread_m", "sun_requirement", "water_requirement", "soil_preference",
   "pc_zone_suitability", "growth_rate", "lifespan_type", "yield_type",
@@ -31,6 +31,7 @@ const EXPECTED_COLUMNS = [
 
 const ENUMS = {
   category: ["tree", "shrub", "herb", "groundcover", "vine", "grass_cover_crop", "fungi", "animal_system", "structure", "water_feature"],
+  layer: ["canopy", "sub_canopy", "shrub", "herbaceous", "root", "groundcover", "vine", "cover_crop", "fungal", "n_a"],
   sun_requirement: ["full_sun", "partial_shade", "full_shade"],
   water_requirement: ["low", "medium", "high", "aquatic"],
   growth_rate: ["slow", "medium", "fast", "n_a"],
