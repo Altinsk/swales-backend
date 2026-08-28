@@ -18,6 +18,7 @@ module.exports = (sequelize, DataTypes) => {
       ScientificName: { type: DataTypes.STRING(255), allowNull: true },
       Category: { type: DataTypes.STRING(50), allowNull: false },
       Subcategory: { type: DataTypes.STRING(100), allowNull: true },
+      Layer: { type: DataTypes.STRING(50), allowNull: true },
       ClimateZone: {
         type: DataTypes.ARRAY(DataTypes.STRING),
         allowNull: false,
