@@ -7,7 +7,7 @@ left off."
 
 ## Last updated
 
-2026-08-28
+2026-08-30
 
 ## Test domain: permaculturetools.online (2026-08-27, in progress)
 
@@ -339,18 +339,28 @@ before the relocation — read them as "this repo," not literally `back`.
   `DATABASE_URL_DEV_BRANCH` per `config/config.json`, no manual override
   needed for the migration step (only `seedElements.js` needs the
   override, since it reads `DATABASE_URL` directly via `models/index.js`
-  rather than through sequelize-cli's env-aware config). **Paused as of
-  2026-08-25, not forgotten** — see `future-concerns.md` item 11 for the
-  full reason (short version: the plant DB has zero images, merging now
-  would render every species as a generic placeholder). The code for this
+  rather than through sequelize-cli's env-aware config). **Still paused,
+  not forgotten, not finished** — real per-species images remain the
+  blocker (see `future-concerns.md` item 11: the plant DB has zero images
+  today; merging into the canvas now would render every species as one
+  generic per-category placeholder shape, not a distinct picture). The
+  `layer` field itself does not depend on photos and is functionally
+  complete and applied to both the Neon dev branch and production — but
+  that's only the data-model half of this item. **The actual point of
+  this work — the canvas showing real plant data instead of static
+  `presets.json` — has not started and cannot start until Omar sources or
+  creates a real image per `icon_key`.**
+  Code housekeeping only (2026-08-30): the backend code
   (`models/element.js`, `scripts/seedElements.js`, `scripts/validateSeed.js`,
-  `seed-data/plants_seed.csv`, `seed-data/schema.md`, and the untracked
-  `migrations/20260825010000-add-layer-to-elements.js`) is still sitting
-  uncommitted in the local working tree as of 2026-08-26 — functionally
-  complete and already applied to the Neon dev branch, just not committed,
-  precisely because the frontend wiring it enables is paused. Same story on
-  the designer side for `public/presets.json`'s `food-forest-layers`
-  restructuring (verified working 2026-08-25, also uncommitted).
+  `seed-data/plants_seed.csv`, `seed-data/schema.md`,
+  `migrations/20260825010000-add-layer-to-elements.js`) and the designer
+  side (`public/presets.json`'s `food-forest-layers` restructuring) had
+  been sitting uncommitted in the working tree for days — both are now
+  committed and pushed (`swales-backend` PR #13; `swales-designer`
+  `6829213`). This is purely a "stop the repo silently drifting from what
+  the database already has" cleanup — it does not advance the paused item,
+  does not touch the canvas, and should not be read as progress toward
+  unblocking it. Still waiting on Omar for images.
 - **Roadmap**: `docs/roadmap.md` is the merged, canonical Phase 0→F plan
   (106 items total after adding Phase 0). `docs/roadmap_backlog.xlsx` is
   the matching live tracker with a `Status` column. `swales-designer/CLAUDE.md`

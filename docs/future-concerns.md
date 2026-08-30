@@ -120,18 +120,15 @@ deferred** that carry real risk if ignored too long.
     `swales-designer/public/presets.json` (verified working 2026-08-25, no
     further redesign needed) — actual guild-builder/badge logic is
     deliberately deferred further, to Phase 2/W, on top of that.
-    Two local, uncommitted changesets are sitting in the working tree
-    specifically because of this pause, not because they were forgotten:
-    `swales-backend` (`models/element.js`, `scripts/seedElements.js`,
-    `scripts/validateSeed.js`, `seed-data/plants_seed.csv`,
-    `seed-data/schema.md`, and the untracked
-    `migrations/20260825010000-add-layer-to-elements.js`) add the `layer`
-    field the merge will key off of — already applied to and re-seeded on
-    the Neon dev branch, just not committed; and `swales-designer`
-    (`public/presets.json`) holds the `food-forest-layers` restructuring
-    described above. Both are functionally complete and safe to commit
-    independently of the pause if that's ever useful, but committing them
-    doesn't unblock anything — the merge itself waits on the images.
+    **Still not started, still waiting on images as of 2026-08-30** — no
+    change to this pause's status. The `layer` field (the data-model half
+    of what the eventual merge will key off) and `swales-designer`'s
+    `food-forest-layers` `presets.json` restructuring were committed this
+    session (previously sat uncommitted for days) — that's repo hygiene
+    only, not progress on the merge itself. The canvas still reads only
+    the static `presets.json`, `/api/elements` is still never called, and
+    none of that changes until Omar sources or creates a real image per
+    `icon_key`.
 
 ### Infrastructure
 
