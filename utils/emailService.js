@@ -90,7 +90,7 @@ exports.sendVerificationEmail = async (email, token, src = "swales") => {
   );
 
   await resend.emails.send({
-    from: "no-reply@swales.app", // Update this to your verified domain later (e.g., support@swales.com)
+    from: "no-reply@permaculturetools.online", // Verified in Resend 2026-09-03 for testing on the rebuild's test domain
     to: email,
     subject: "Verify your Email",
     html: htmlContent,
@@ -111,7 +111,7 @@ exports.sendResetPasswordEmail = async (email, token, source = "swales") => {
   );
 
   await resend.emails.send({
-    from: "no-reply@swales.app",
+    from: "no-reply@permaculturetools.online",
     to: email,
     subject: "Reset Password",
     html: htmlContent,
