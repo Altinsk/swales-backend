@@ -171,7 +171,7 @@ necessarily editable) from both places.
 |---|---|---|---|---|
 | Site comparison (two locations side-by-side: wind/solar/soil) | Codebase audit — Section B | web | Must | Split-panel layout; data's already fetched — a fast win. |
 | Shareable link (encode lat/lng + active layer in the URL) | Codebase audit — Section B | web | Must | One-line param change — near-zero cost, ship immediately. |
-| PDF site report (wind + solar + soil analysis export) | Codebase audit — Section B | web | Must | Distinct from the design-canvas PDF export in Phase A — this is the energy/soil analysis report. The pdf skill handles generation. Also the thing monetization_framework needs to decide how to gate. |
+| PDF site report (wind + solar + soil analysis export) | Codebase audit — Section B | web | Must | **Done — this row was already satisfied by `combinedReportPdf.js`/`CombinedReportContent.jsx` (see Phase A's monetization row and `status.md`'s 2026-08-27 entry), discovered after this row was originally written. Confirmed 2026-09-03: that component already renders Solar, Wind, and Soil sections into one PDF, alongside Sun/contour/precipitation. No separate build needed — this was a duplicate of already-shipped work, not a gap.** |
 | Combined renewable score (single energy-potential badge: wind + solar) | Codebase audit — Section B | web | Should | — |
 | ROI/payback calculator (electricity bill + budget -> payback years) | Codebase audit — Section B | web | Should | Uses existing wind/solar data — pairs naturally with bankability in the W track. |
 | Optimal install month recommender (seasonal solar + wind data) | Codebase audit — Section B | web | Should | Built on SmartSolarAdvisor's existing seasonal data. |
@@ -179,7 +179,7 @@ necessarily editable) from both places.
 | Shadow/obstruction input (mark trees/buildings to adjust solar estimate) | Codebase audit — Section B | web | Could | — |
 | Onboarding tooltip tour (4-step walkthrough) | Codebase audit — Section B | web | Should | Distinct from the broader 'onboarding' beginner-mode item in Phase D — this is a lightweight tour for the existing analysis-card UI, shippable now. |
 | Saved pins with notes (localStorage OK for v1) | Codebase audit — Section B | web | Could | — |
-| Precipitation card — Option A (static: intensity badge, rainfall chart, guidance, soil-saturation estimate) | Codebase audit — Section B | web | Should | Ship this static version first (matches the SolarCard/WindDashboard pattern), per your own recommendation. |
+| Precipitation card — Option A (static: intensity badge, rainfall chart, guidance, soil-saturation estimate) | Codebase audit — Section B | web | Should | **Done — confirmed 2026-09-03: `PrecipitationCard.jsx` exists (intensity scale, animated rain effect) and is live in `LayerDataPanel.jsx`.** Option B (RainAdvisor: irrigation decisions, flood/runoff risk, swale/water-harvesting sizing) remains **not started**. |
 | RainAdvisor service — Option B (irrigation decisions, flood/runoff risk, swale/water-harvesting sizing) | Codebase audit — Section B | web | Could | Layer in after precipitation_card ships, the same way SmartSolarAdvisor was bolted onto the sun tracker — don't build both at once. |
 | Composite soil health score (0-100, weighted, with trend indicator) | Codebase audit — Section B | web | Should | — |
 | Crop suitability engine (ranks wheat/maize/legumes/vegetables/fruit trees with reasons) | Codebase audit — Section B | web | Should | — |

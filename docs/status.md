@@ -7,7 +7,32 @@ left off."
 
 ## Last updated
 
-2026-09-03
+2026-09-03 (Google sign-in on permaculturetools.online now in progress —
+needs a Google Cloud Console change only Omar can make; see "Still open,
+needs Omar" below)
+
+## Correction 2026-09-03: two Phase A2 roadmap rows were already done
+
+While reviewing "what's next" with Omar, checked the actual code behind two
+A2 backlog rows rather than trust the roadmap wording — both turned out to
+already be shipped, just never marked as such:
+
+- **"PDF site report (wind + solar + soil analysis export)"** — this A2 row
+  was written from an earlier codebase audit, before the 2026-08-24
+  monetization session discovered `combinedReportPdf.js`/
+  `CombinedReportContent.jsx` already existed. Confirmed 2026-09-03:
+  `CombinedReportContent.jsx` already renders Solar, Wind, and Soil sections
+  (plus Sun/contour/precipitation) into one PDF. It was a duplicate entry,
+  not a real gap — `roadmap.md` updated to reflect this.
+- **"Precipitation card — Option A (static)"** — also already built, not
+  "not started" as the roadmap said. `PrecipitationCard.jsx` exists (rain
+  intensity scale, animated rain effect) and is live in
+  `LayerDataPanel.jsx:181`. Only Option B (**RainAdvisor** — irrigation/
+  flood-risk/swale-sizing recommendations layered on top) is still genuinely
+  open.
+
+Both corrected in `roadmap.md`'s A2 table. `roadmap_backlog.xlsx`'s
+matching rows still need the same correction — not yet done.
 
 ## Test domain: permaculturetools.online (2026-08-27, live as of 2026-09-03)
 
