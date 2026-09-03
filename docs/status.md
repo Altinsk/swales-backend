@@ -7,9 +7,9 @@ left off."
 
 ## Last updated
 
-2026-08-30
+2026-09-03
 
-## Test domain: permaculturetools.online (2026-08-27, in progress)
+## Test domain: permaculturetools.online (2026-08-27, live as of 2026-09-03)
 
 Omar bought `permaculturetools.online` to test the live rebuild end-to-end
 without touching `swales.app` (still serving the old `SwalesApp\back` site).
@@ -36,56 +36,54 @@ explicitly **not decided yet**).
 - `roadmap.md`'s "Field Calculators" row scope decided: includes
   earthworks-sizing tools (swale volume/dimensions, terrace spacing/cut-fill)
   — not broken into individual backlog items yet.
+- **Namecheap DNS → Vercel nameservers — Done (2026-09-03).** Switched
+  `permaculturetools.online` to `ns1.vercel-dns.com`/`ns2.vercel-dns.com`.
+  **Gotcha worth remembering for the `swales.app` cutover**: the registry-level
+  delegation (checked via the `.online` TLD servers directly) showed correct
+  immediately, but Vercel's own side took roughly a day to actually activate
+  the DNS zone — until then, `ns1.vercel-dns.com` returned `Query refused` for
+  the domain, Vercel's dashboard showed "Invalid Configuration", and the SSL
+  Certificates panel showed "DNS zone not enabled for permaculturetools.online.
+  Cannot solve dns-01 ACME cert challenge." No action fixed this faster than
+  waiting — don't chase it by re-adding records or reverting nameservers.
+  Once the zone activated, all 4 hostnames (root, `www`, `designer`, `api`)
+  resolved to Vercel IPs and issued valid certs without any manual DNS record.
+- **Vercel → Domains, all 3 projects — Done (2026-09-03).** `swales-services`
+  has `permaculturetools.online` (redirects to `www`) + `www.permaculturetools.online`;
+  `swales-designer` has `designer.permaculturetools.online`; `swales-backend`
+  has `api.permaculturetools.online`. All issuing SSL automatically.
+- **Vercel → Environment Variables (Production), all 3 projects — Done
+  (2026-09-03).** Set exactly as planned below (see the values that were
+  "still open" as of 2026-08-30) — `NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_API_BASE_URL`,
+  `NEXTAUTH_URL`, `NEXT_PUBLIC_APP_BASE_URL`, `SWALES_APP_URL`,
+  `DESIGNER_APP_URL`, `BASE_URL`, `CLIENT_URL` all point at the
+  `permaculturetools.online` family. `ALLOW_INDEXING` left unset on both
+  frontends as planned.
+- **Resend domain verification + email sender flip — Done (2026-09-03).**
+  Omar verified `permaculturetools.online` in Resend (SPF/DKIM/DMARC TXT +
+  MX records added to Vercel's DNS zone, same shape as the records already
+  live for `swales.app`). `utils/emailService.js`'s `sendVerificationEmail`
+  and `sendResetPasswordEmail` now send `from: "no-reply@permaculturetools.online"`
+  instead of `no-reply@swales.app` — shipped on
+  `chore/email-from-permaculturetools-domain`, merged as PR #16 (`757e970`).
+  **Must be flipped back to `no-reply@swales.app` at the real cutover** — see
+  new item 7 in the Cutover stage checklist below.
 
-**Still open, needs Omar (external accounts, can't be done unattended):**
-1. **Namecheap DNS** — point `permaculturetools.online` at Vercel. Simplest:
-   switch nameservers to Vercel's (`ns1.vercel-dns.com`/`ns2.vercel-dns.com`)
-   via Namecheap's Domain → Nameservers → Custom DNS, since 3 subdomains
-   across 3 separate Vercel projects is more records than manually managing
-   A/CNAME entries in Namecheap is worth. If keeping Namecheap DNS instead:
-   apex (`@`) → A record → `76.76.21.21`; `www`/`designer`/`api` → CNAME →
-   `cname.vercel-dns.com.` (Vercel's domain-add screen shows the exact
-   values to use — follow those over this note if they differ).
-2. **Vercel → Domains**, one add per project: `swales-services` gets
-   `permaculturetools.online` + `www.permaculturetools.online`;
-   `swales-designer` gets `designer.permaculturetools.online`;
-   `swales-backend` gets `api.permaculturetools.online`. Vercel issues SSL
-   automatically once DNS resolves.
-3. **Vercel → Environment Variables** (Production), per project — note this
-   changes behavior on the existing `*.vercel.app` URLs too, since it's the
-   same Production environment/deployment serving both:
-   - `swales-services`: `NEXT_PUBLIC_API_BASE_URL=https://api.permaculturetools.online/api`,
-     `NEXT_PUBLIC_APP_BASE_URL=https://permaculturetools.online`,
-     `NEXTAUTH_URL=https://permaculturetools.online`
-   - `swales-designer`: `NEXT_PUBLIC_API_URL=https://api.permaculturetools.online/api`,
-     `NEXT_PUBLIC_APP_BASE_URL=https://designer.permaculturetools.online`,
-     `NEXTAUTH_URL=https://designer.permaculturetools.online`
-   - `swales-backend`: `SWALES_APP_URL=https://permaculturetools.online`,
-     `DESIGNER_APP_URL=https://designer.permaculturetools.online`,
-     `BASE_URL=https://api.permaculturetools.online`, `CLIENT_URL=https://designer.permaculturetools.online`
-   - Leave `ALLOW_INDEXING` unset on both frontends — this domain should
-     stay out of the index while it's a test surface.
-4. **Neon — nothing needed.** Checked: Neon has no domain-name-based config
-   at all. `DATABASE_URL` connections are host/IP-based, not tied to which
-   domain the frontend runs on, and the existing Neon-GitHub branch-per-PR
-   integration (`.github/workflows/neon_workflow.yml`) is scoped to the repo,
-   not to a deployed domain. Nothing to do here for this domain swap.
-5. **Google Cloud Console — deferred, not needed right now (Omar's call,
+**Still open, needs Omar:**
+1. **Google Cloud Console — deferred, not needed right now (Omar's call,
    2026-08-27).** Skipping the OAuth client update for now means **Google
    sign-in will not work on `permaculturetools.online` yet** — clicking it
    will fail or redirect wrong, since the domain isn't in the OAuth client's
    authorized origins/redirect URIs. Fine as long as testing doesn't depend
-   on Google sign-in specifically; native email/password sign-in is
-   unaffected (no OAuth involved). Revisit when needed: add Authorized
-   JavaScript origins `https://permaculturetools.online` and
-   `https://designer.permaculturetools.online`; add Authorized redirect URIs
+   on Google sign-in specifically; native email/password sign-in works
+   (confirmed live — the whole point of finishing the domain/DNS work above
+   was to get this and the newsletter-subscribe flow testable end-to-end on
+   the real domain). Revisit when needed: add Authorized JavaScript origins
+   `https://permaculturetools.online` and `https://designer.permaculturetools.online`;
+   add Authorized redirect URIs
    `https://permaculturetools.online/api/auth/callback/google` and
    `https://designer.permaculturetools.online/api/auth/callback/google`
    (NextAuth's standard callback path).
-6. **Verify once DNS/domains are live**: each of the 3 subdomains loads over
-   HTTPS with a valid cert (no browser warning) and `curl -I` confirms
-   `X-Robots-Tag: noindex` is present. Google sign-in is *not* expected to
-   work yet (see item 5) — don't treat that as a bug during this pass.
 
 ## Cutover stage: swapping in swales.app (future, not yet scheduled)
 
@@ -119,7 +117,18 @@ but for `swales.app`/`designer.swales.app`/`api.swales.app` instead of
 6. Point DNS at Namecheap for `swales.app` the same way as
    `permaculturetools.online` (nameservers or A/CNAME to Vercel) if not
    already done — `swales.app` currently still resolves to the old
-   `SwalesApp\back` site.
+   `SwalesApp\back` site. Expect the same Vercel-side zone-activation lag
+   noted above (registry delegation can look correct immediately while
+   Vercel's own DNS zone takes up to ~a day to actually enable) — don't
+   troubleshoot it as a real misconfiguration if "Invalid Configuration"
+   persists briefly right after the nameserver switch.
+7. **Flip the email sender back**: revert `utils/emailService.js`'s
+   `sendVerificationEmail`/`sendResetPasswordEmail` `from` address from
+   `no-reply@permaculturetools.online` back to `no-reply@swales.app` (see
+   the "Resend domain verification + email sender flip" entry above,
+   2026-09-03) — `swales.app` is already the verified Resend sender, so this
+   is just reverting the string, no new Resend/DNS work needed. Needs its
+   own branch+PR, same as the original flip.
 
 ## New directives from Omar (2026-08-26) — see `roadmap.md`'s "Guiding directives" section for full detail
 
