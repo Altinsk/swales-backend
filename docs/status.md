@@ -7,6 +7,9 @@ left off."
 
 ## Last updated
 
+2026-09-04 (Discord/Substack footer links wired in; field-level validation
+errors added across auth forms in both frontends — see below)
+
 2026-09-03 (Google sign-in on permaculturetools.online now in progress —
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
@@ -993,12 +996,42 @@ before the relocation — read them as "this repo," not literally `back`.
    stuck "already connected" error in the Neon integration's "Connect a
    Project" dialog, if the native Vercel-Neon branching (vs. the
    GitHub-integration workaround now in place) is ever wanted instead.
-12. **On hold until Omar creates the accounts (2026-08-27):** Substack icon
-   added to `swales-services/src/components/ui/Footer.jsx`'s social-icons
-   list (`fa-brands fa-square-substack`), placeholder `href="#"` — swap in
-   the real newsletter link once the Substack account is created. Same
-   status noted for **Discord**: the icon already existed in that list with
-   a placeholder `href="#"`, but had no real invite link either — flagging
-   it here alongside Substack so both get fixed together once Omar has both
-   account/invite links in hand. No code change needed beyond pasting the
-   two URLs into `Footer.jsx` when ready.
+12. **Done (2026-09-04):** Discord and Substack links, flagged 2026-08-27 as
+   on hold until Omar created the accounts, are now both live. Omar provided
+   the real URLs (Discord channel invite, `https://substack.com/@swalesapp`)
+   and both `href="#"` placeholders in `swales-services/src/components/ui/Footer.jsx`
+   were swapped in, `target="_blank"` added to Discord to match the rest of
+   the social-icons list (Substack's `<a>` already had it). Committed and
+   pushed directly to `main` (`swales-services`, code-only change, no
+   backend/schema involved — same low-risk category as other direct-to-main
+   frontend commits in this repo's history).
+
+## Field-level validation errors added across auth forms (2026-09-04)
+
+Both frontends' auth-adjacent forms were showing a single top-level error
+message (e.g. "Passwords do not match.") rather than pointing at which
+field was wrong. Reworked to show inline per-field errors instead —
+empty-field and format checks (email shape, password rule, confirm-password
+match) now surface directly under the relevant input, with the input's
+border color reflecting its own valid/invalid/untouched state rather than
+one shared error banner for the whole form. Touched:
+
+- `swales-services`: `AccountDetailsModal.jsx` (profile + change-password
+  sections).
+- `swales-designer`: `login/page.tsx`, `signup/page.tsx`,
+  `reset-password/page.tsx`, `AccountDetailsModal.tsx`,
+  `ForgotPasswordModal.tsx`.
+
+Alongside this, `swales-designer`'s popups (`CoffeePopup`,
+`SignupQuotePopup`, `PrintAuthGatePopup`) were restyled to match
+`swales-services`'s existing popup look (shadow, z-index, spacing), the
+signup-quote/coffee-popup delay dropped from 15s to 4s to match services,
+and `PrintAuthGatePopup` was redesigned from a quote-card into an
+icon-header gate (mirroring `swales-services`'s `ReportAuthGateModal`)
+with copy specific to gating "print" rather than "download report".
+
+Both changes are code-only, no schema/backend involved. Committed and
+pushed directly to `main` in both `swales-services` and `swales-designer`,
+matching this repo's existing pattern of direct-to-main for pure
+frontend/UI work (backend/schema changes still always go through a
+branch+PR — see item 10 below).
