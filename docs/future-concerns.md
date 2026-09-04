@@ -80,10 +80,19 @@ deferred** that carry real risk if ignored too long.
    externally, not urgent since nothing is purchasable yet (blocked on
    Stripe/bank account regardless).
 
-7. **Wind turbine sizing** — decide whether to use real wind-speed data
+7. ~~**Wind turbine sizing** — decide whether to use real wind-speed data
    vs. the current stub that matches `wind.txt` verbatim (including an
-   unused `meanWindSpeed` parameter). Low severity, deliberately
-   unchanged pending a decision.
+   unused `meanWindSpeed` parameter).~~ Done 2026-09-03 — `autoSelectTurbine`
+   now sizes off the site's real capacity factor instead of a fixed
+   category-wide assumption (commit `8beb549`). Same session also fixed a
+   related bug where the Reliability score could show "Stable" on a
+   visibly seasonal site (Commonwealth Bay was scoring 76/"Stable" despite
+   a 45% peak-to-trough monthly swing) by removing a raw-wind-speed
+   component that had nothing to do with actual consistency, and added a
+   real Weibull-k steadiness signal and a Gumbel-fit Extreme Wind Screening
+   (IEC 61400-1 turbine class estimate). Full detail in the session's
+   `swales-services/solar-wind-analysis.md` and the wind-potential blog
+   post, both updated to match.
 
 ### Technical debt / cleanup
 
@@ -162,6 +171,88 @@ deferred** that carry real risk if ignored too long.
     guarantees (relevant for any future scheduled/background job). File
     storage and DB pooling are already handled correctly (Vercel Blob,
     Neon pooled connections) — not a concern.
+
+### Wind/solar potential — deferred data-accuracy improvements
+
+15. **Local mirror of Global Wind Atlas / Global Solar Atlas, instead of
+    live third-party calls on every map click.** — *Severity: Low
+    (reliability/cost improvement, not a correctness bug)*. Motivated by a
+    real, repeated failure: the GWA proxy (`swales-backend/server.js`'s
+    `/api/gwa/custom/windSpeed` and `/windFrequencyRose`) returned a genuine
+    `504 Gateway Timeout` (`FUNCTION_INVOCATION_TIMEOUT`) for Commonwealth
+    Bay, Antarctica on two separate test runs on 2026-09-03, silently
+    degrading that site to raw ERA5 with no terrain correction. Scoped but
+    **not started** — this is a real infrastructure project, not a quick
+    add. Key findings from research, before any code is touched:
+    - GWA's download page states their API "is not to be used for bulk
+      downloads of all countries or datasets" — but their own dropdown
+      offers **"The World"** as one deliberate, sanctioned single-file
+      option; confirmed a real working URL via their UI:
+      `https://globalwindatlas.info/api/gis/global/wind-speed/100`
+      (redirects to a DTU Figshare-hosted file). Reading the restriction in
+      context: a **one-time** download of a named "World" layer is fine;
+      **scripting a loop** over all 267 countries or every layer/height
+      combination is what's prohibited.
+    - Global Solar Atlas's Terms of Use explicitly forbid "any robot,
+      spider or other automatic device... to access" their interactive map
+      app — but this governs the interactive app specifically, not their
+      separate bulk GIS download portal (`globalsolaratlas.info/download/world`),
+      which exists for exactly this kind of one-time retrieval. Both
+      datasets are CC BY 4.0 (GSA adds a WIPO-mediation/arbitration clause)
+      and explicitly permit redistribution/self-hosting with attribution
+      (exact citation text is in GSA's Terms of Use page).
+    - GWA's data is **not a simple point lookup** — the live proxy sends a
+      ~3km polygon and GWA's server returns pre-computed zonal statistics
+      (a value/count histogram over that polygon). A local mirror has to
+      replicate that aggregation itself (read a windowed region of the
+      raster, compute the same weighted histogram), not just read one
+      pixel. Global Solar Atlas, by contrast, already is a simple point
+      lookup (`PVOUT_csi`, `GHI`) — much simpler to mirror.
+    - The app only actually consumes **2 layers today**: GWA wind-speed @
+      100m (the app always requests height=100 and derives other hub
+      heights itself via a log-wind-profile — see `windService.js`), and
+      GSA's PVOUT (annual+monthly) + GHI (annual). Neither atlas's other
+      published layers (power density, air density, Weibull A/K, IEC
+      fatigue/extreme-load classes, etc.) are used anywhere in the
+      codebase — the recommended mirror scope is these 2 layers only, not
+      either atlas's full catalog.
+    - Recommended architecture: Cloud-Optimized GeoTIFF (COG) files in
+      Vercel Blob (`swales-backend` already has `@vercel/blob` and
+      `BLOB_READ_WRITE_TOKEN` configured — reuse, don't re-provision),
+      queried via windowed HTTP range-reads using the `geotiff` npm
+      package (new dependency — neither repo has any raster/geospatial
+      tooling today). New backend endpoint(s) reproduce the exact response
+      shape `windService.js`/`solarService.js` already parse, so
+      `swales-services` needs zero changes, and always fall back to the
+      existing live proxy call on any read failure — a reliability
+      upgrade, never a new single point of failure.
+    - **Explicitly out of scope for a first pass**: the Wind Frequency
+      Rose, which needs a different directional/sector dataset with no
+      confirmed simple global-layer equivalent found yet.
+    - **Unresolved, needs confirming before committing spend**: real file
+      sizes (GWA's download redirects through Figshare's `ndownloader`,
+      which wouldn't reveal size via HEAD/Range probing without triggering
+      a full download — not attempted), current Vercel Blob pricing at
+      that scale, and whether default Vercel function memory/timeout is
+      sufficient for a windowed COG read (should be fine in principle,
+      needs empirical validation).
+
+16. **Extreme Wind Screening has no tornado-risk signal for US sites.** —
+    *Severity: Low.* The wind-potential dashboard's Extreme Wind Screening
+    (added 2026-09-03, see item 7 above) estimates a 50-year gust from
+    ERA5 reanalysis data via a Gumbel fit — structurally blind to
+    tornadoes, which are far smaller than the ~31km data grid. NOAA's
+    Storm Prediction Center publishes a historical US tornado track
+    database (1950–present) that could add a US-only "tornado exposure:
+    elevated/typical" badge alongside the existing IEC gust-class
+    indicator. Deliberately deferred: unlike the GWA/GSA data above, this
+    isn't a live-queryable API — it's a static, annually-updated
+    CSV/shapefile requiring a one-time ETL into a lat/lon-queryable density
+    grid before it's usable. Must never feed into Suitability/Reliability/
+    Annual Yield/Specific Yield — tornado risk is a hazard signal
+    unrelated to average energy resource (confirmed: Bridgeport, TX has
+    unremarkable average wind and "Moderate" suitability despite real
+    tornado risk) — it would only ever be an additional, separate badge.
 
 ---
 
