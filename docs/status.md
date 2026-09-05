@@ -7,16 +7,18 @@ left off."
 
 ## Last updated
 
-2026-09-05 (**Security: password hash/salt were leaking in API error
-responses — found and fixed, PR open, see below.** Also this session: an
-env var mix-up during the domain-migration cleanup temporarily broke
+2026-09-05 (**`verify-email` crashed/hung on every expired or invalid
+link — found while verifying SWALES_APP_URL/DESIGNER_APP_URL live, fixed,
+PR open, see below. Also security: password hash/salt were leaking in API
+error responses — found and fixed, PR open.** Also this session: an env
+var mix-up during the domain-migration cleanup temporarily broke
 DATABASE_URL — fixed by Omar; both `swales-designer` and `swales-services`
 were found still pointing their `NEXT_PUBLIC_API_*` vars at the old
-`swales-backend.vercel.app` — **now fixed and re-verified live against
-the production bundles**; signup verification
-link — two bugs found and fixed (Resend account permissions + missing
-BASE_URL); Site comparison shipped; shareable link gated to signed-in
-users; resend-verification endpoint + dead env var cleanup)
+`swales-backend.vercel.app` — now fixed and re-verified live against the
+production bundles; signup verification link — two earlier bugs found and
+fixed (Resend account permissions + missing BASE_URL); Site comparison
+shipped; shareable link gated to signed-in users; resend-verification
+endpoint + dead env var cleanup)
 
 2026-09-04 (Discord/Substack footer links wired in; field-level validation
 errors added across auth forms in both frontends — see below)
@@ -1486,6 +1488,72 @@ or completing a Google OAuth round-trip): `SWALES_APP_URL`/`DESIGNER_APP_URL`
 on `swales-backend`, and `NEXTAUTH_URL`/`NEXT_PUBLIC_APP_BASE_URL` on both
 frontends, should all be pointing at their respective `permaculturetools.online`
 subdomains rather than old `*.vercel.app` project URLs.
+
+**Update, confirmed 2026-09-05**: `NEXTAUTH_URL` and `NEXT_PUBLIC_APP_BASE_URL`
+on both frontends verified correct via live, non-destructive checks —
+`GET /api/auth/providers` on each app reflects `NEXTAUTH_URL` in its
+`signinUrl`/`callbackUrl` fields (`www.permaculturetools.online` for
+services, `designer.permaculturetools.online` for designer), and each
+app's own JS bundle has the correct `NEXT_PUBLIC_APP_BASE_URL` baked into
+its Google-login popup callback URL. `SWALES_APP_URL`/`DESIGNER_APP_URL`
+on `swales-backend` turned out to be un-verifiable the same way — see the
+next entry, which explains why and is a bigger deal than the env var
+check that led to finding it.
+
+## `verify-email` crashed/hung on every expired or invalid link (2026-09-05)
+
+Found while trying to verify `SWALES_APP_URL`/`DESIGNER_APP_URL` live: the
+plan was to hit `GET /api/auth/verify-email/:src/:token` with a bogus
+token (non-destructive — no real account touched) and read the resulting
+error page's "Continue to Login" link, the same trick already used
+successfully for the other env vars above. Instead, every request to this
+endpoint — with any token, any `src` — simply hung with zero bytes ever
+returned, confirmed with `curl -v` (TLS handshake completes, request
+sends fine, then nothing) and independently via the browser tool timing
+out at 300s. A sibling single-param dynamic route (`GET /api/shares/:uuid`)
+responded normally, so this was specific to this one handler, not a
+general routing/platform problem.
+
+**Root cause, confirmed by running the exact handler locally**: in
+`authController.js`'s `verifyEmail`, `loginUrl` was declared with `const`
+*inside* the `try` block — but the `catch` block below it *also*
+references `loginUrl`, to build the "this link is invalid or expired"
+error page. Block-scoping means the catch block can't see it, so the
+moment `verifyEmailVerifyToken(token)` throws (which is every expired or
+malformed token — the exact case this whole catch block exists to
+handle), the process crashes with `ReferenceError: loginUrl is not
+defined` instead of ever reaching the catch block's own error-handling
+code. Locally this crashed the whole Node process outright. On Vercel,
+the crash inside an `async` handler becomes an unhandled promise
+rejection with nothing to catch it (same class of gap as the
+`resendVerification`/`forgotPassword` issue fixed earlier this session,
+but this one had no `try/catch` gap at the call site — the bug is that
+the `try/catch` that exists doesn't actually work), which is consistent
+with the request just hanging until Vercel's own platform timeout instead
+of a fast error response.
+
+**Real-world impact**: this means the friendly "your link is invalid or
+expired, request a new one" page has likely never actually worked in
+production — anyone whose verification link expired (the normal 24h
+case) or who mistyped/reused an old link would have hit a hung request
+instead of a helpful page pointing them at the resend-verification flow
+built earlier this session. Valid, not-yet-expired links were never
+affected (the success path doesn't touch this bug).
+
+**Fixed**: moved `loginUrl`'s computation above the `try` block so both
+branches can see it — same shape as the `clientUrl` variable that used to
+sit above it (also removed here: confirmed dead, declared and never
+referenced, found during an earlier pass this session). Verified locally:
+an invalid token now returns a fast `400` with the correct error page
+instead of crashing, and the server stays up for subsequent requests.
+Fixed on branch `fix/verify-email-crash-on-invalid-token` (PR not yet
+opened — same `gh` CLI limitation as the other branches today; open from
+`https://github.com/Altinsk/swales-backend/pull/new/fix/verify-email-crash-on-invalid-token`).
+
+**Still open**: `SWALES_APP_URL`/`DESIGNER_APP_URL` themselves couldn't be
+verified against production because of this bug blocking the check —
+worth re-running the same non-destructive bogus-token probe once this PR
+is merged and deployed.
 
 ## Security: password hash/salt were leaking in API error responses (2026-09-05)
 
