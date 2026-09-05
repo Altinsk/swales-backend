@@ -7,9 +7,11 @@ left off."
 
 ## Last updated
 
-2026-09-05 (Site comparison shipped and verified live, right after its
-Analyze-gate prerequisite; also shareable link gated to signed-in users,
-resend-verification endpoint + dead env var cleanup — see below)
+2026-09-05 (**Signup verification emails are not sending — needs Omar's
+action on the Resend dashboard, see below.** Also: Site comparison shipped
+and verified live, right after its Analyze-gate prerequisite; shareable
+link gated to signed-in users, resend-verification endpoint + dead env
+var cleanup)
 
 2026-09-04 (Discord/Substack footer links wired in; field-level validation
 errors added across auth forms in both frontends — see below)
@@ -1324,3 +1326,65 @@ quick pass next time a real session is available.
 
 Committed and pushed directly to `swales-services` `main` — code-only, no
 schema/backend change.
+
+## Signup verification emails silently not sending (2026-09-05) — needs Omar
+
+Omar reported: signed up, got "check your email," no email arrived. Root
+cause found and confirmed live:
+
+**The bug (fixed, PR open):** the Resend SDK does *not* throw when the API
+rejects a send — it resolves with `{ data: null, error }`. `emailService.js`'s
+`sendVerificationEmail`/`sendResetPasswordEmail` never checked that `error`
+field, so `register()`, the new `resendVerification()`, and `forgotPassword()`
+all reported success regardless of whether Resend actually accepted the
+email. Confirmed by calling the real Resend API directly with this
+backend's live `RESEND_API_KEY` and the exact `from` address the code
+uses:
+```json
+{
+  "data": null,
+  "error": {
+    "statusCode": 403,
+    "message": "This API key is not authorized to send emails from permaculturetools.online"
+  }
+}
+```
+Fixed on branch `fix/surface-resend-email-send-failures`
+(PR not yet opened — `gh` CLI isn't available in this environment, same as
+the resend-verification PR earlier; open it from
+`https://github.com/Altinsk/swales-backend/pull/new/fix/surface-resend-email-send-failures`):
+both functions now throw when Resend returns an `error`, and
+`resendVerification`/`forgotPassword` — which had **no try/catch at all**
+before this — now catch it and return a real error instead of a false
+"check your email" (this was also a latent bug: an async Express 4 route
+handler that rejects with no catch just hangs the request forever instead
+of responding, since there's no global unhandled-rejection handler in
+`server.js`).
+
+**The actual root cause (not fixed, needs Omar — the API key/account
+issue, not code):** the `RESEND_API_KEY` configured for this backend does
+not have permission to send from the `permaculturetools.online` domain,
+despite that domain being verified in Resend on 2026-08-27/09-03 (see the
+"Resend domain verification + email sender flip" entry earlier in this
+file). Likely explanations, to check in the Resend dashboard:
+- The API key in use is a **restricted/scoped key** (Resend supports
+  creating API keys limited to sending from specific domains) that was
+  never scoped to include `permaculturetools.online` — possibly still
+  scoped to the original `swales.app` domain from before the 2026-09-03
+  sender-domain flip.
+- The domain was verified under a **different Resend account or project**
+  than the one this API key belongs to.
+- The response headers from the probe also showed
+  `x-resend-daily-quota: 0` and `x-resend-monthly-quota: 1` — unusually
+  low limits that suggest this specific key may be a restricted/test key
+  rather than the account's main sending key.
+
+**What Omar needs to do:** open the Resend dashboard → API Keys, find the
+key matching this backend's `RESEND_API_KEY` env var (Vercel →
+swales-backend → Environment Variables, to see which key is actually
+deployed — it may differ from the local `.env` value tested here), and
+either grant it "Full access"/unrestricted sending, or create a new key
+scoped to (or unrestricted for) `permaculturetools.online` and update the
+env var. Then re-test a real signup. No code changes needed for this
+part — the fix above only makes the failure visible, it can't grant the
+key permission it doesn't have.
