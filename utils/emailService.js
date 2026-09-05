@@ -89,12 +89,24 @@ exports.sendVerificationEmail = async (email, token, src = "swales") => {
     url
   );
 
-  await resend.emails.send({
+  // The Resend SDK does NOT throw on an API-level rejection (bad/unauthorized
+  // sender domain, invalid recipient, rate limit, etc.) - it resolves with
+  // { data: null, error } instead. Callers here (register, resend-verification)
+  // wrap this in a try/catch expecting a throw on failure, so without this
+  // check a rejected send silently "succeeds" and the user is told to check
+  // an email that was never sent. Confirmed live 2026-09-05: this exact
+  // silent failure was why a real signup never received its verification
+  // email - Resend returned 403 "This API key is not authorized to send
+  // emails from permaculturetools.online" and the code never noticed.
+  const result = await resend.emails.send({
     from: "no-reply@permaculturetools.online", // Verified in Resend 2026-09-03 for testing on the rebuild's test domain
     to: email,
     subject: "Verify your Email",
     html: htmlContent,
   });
+  if (result.error) {
+    throw new Error(`Failed to send verification email: ${result.error.message}`);
+  }
 };
 
 exports.sendResetPasswordEmail = async (email, token, source = "swales") => {
@@ -110,10 +122,16 @@ exports.sendResetPasswordEmail = async (email, token, source = "swales") => {
     url
   );
 
-  await resend.emails.send({
+  // See sendVerificationEmail's comment above - the SDK resolves with an
+  // { error } object rather than throwing, so this check is required for
+  // a failed send to actually surface as a failure to the caller.
+  const result = await resend.emails.send({
     from: "no-reply@permaculturetools.online",
     to: email,
     subject: "Reset Password",
     html: htmlContent,
   });
+  if (result.error) {
+    throw new Error(`Failed to send password reset email: ${result.error.message}`);
+  }
 };
