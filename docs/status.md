@@ -7,6 +7,10 @@ left off."
 
 ## Last updated
 
+2026-09-05 (Shareable link gated to signed-in users, monetization docs
+updated to match; resend-verification endpoint + dead env var cleanup —
+see below)
+
 2026-09-04 (Discord/Substack footer links wired in; field-level validation
 errors added across auth forms in both frontends — see below)
 
@@ -1025,3 +1029,62 @@ pushed directly to `main` in both `swales-services` and `swales-designer`,
 matching this repo's existing pattern of direct-to-main for pure
 frontend/UI work (backend/schema changes still always go through a
 branch+PR — see item 10 below).
+
+## Resend-verification endpoint + dead env var cleanup (2026-09-05)
+
+Both flagged in `future-concerns.md` (items 4, 8) and this file's "Next up"
+list (old items 7, 9) — done this session:
+
+- `POST /api/auth/resend-verification` added to `swales-backend`
+  (`authController.js`/`authRoutes.js`), enumeration-safe (same generic
+  response whether the account doesn't exist, is already verified, or a
+  link was actually sent), shares the existing `sensitiveActionLimiter`
+  bucket with register/forgot-password/reset-password. Verified locally:
+  server boots against the Neon dev branch DB, endpoint returns the
+  correct 200, rate limit trips at request 5 as expected.
+- `config/database.js` deleted (confirmed dead — nothing required it,
+  `models/index.js`'s `DATABASE_URL` path is the only live connection) and
+  the now-dead `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASS` plus already-
+  commented-out unused vars removed from `.env.example`.
+- Branch `feature/resend-verification-and-env-cleanup` — `gh` CLI wasn't
+  available in this environment to open the PR programmatically, so Omar
+  opened and merged it himself: **PR #21, merged into `main`.**
+
+## Shareable link gated to signed-in users (2026-09-05)
+
+Picking up Phase A2's "Shareable link" row surfaced that it was **already
+fully built** in `swales-services/src/components/map/MapComponent.jsx`
+(URL `?lat=&lng=` sync, restore-on-load, path-encoded active layer, a
+"Copy shareable link" button in both toolbars) — not new work, just
+discovered while starting this item.
+
+Omar's call this session: copying/using the share link should require
+sign-in, same free-for-contact tier as report/design downloads — not the
+no-gate "Free" tier the monetization framework originally implied for all
+analysis-map interactions. `roadmap.md`'s monetization row updated to
+carve out this exception explicitly: **viewing** a map (including one
+opened from someone else's shared link) still needs no account; only
+*generating/copying your own* link is gated.
+
+Implementation: `handleCopyShareLink` now checks the existing `userName`
+state (same check `handleGenerateReport` already used) and shows an auth
+gate instead of copying when signed out. Rather than duplicate
+`ReportAuthGateModal` for this, generalized it to accept `icon`/`title`/
+`description` props (defaults match its original report-download copy
+exactly, so that call site needed no changes) and added a second
+`showShareAuthGate` state + modal instance with share-specific copy
+("Sign in to share this link..."). Verified live in the browser preview at
+both gates: report-download gate still shows its original copy (no
+regression), share-link gate shows its own distinct copy — both signed-out
+flows redirect to `/signup` or `/login` correctly. Not yet tested: the
+signed-in path (would need a real logged-in session), and whether the URL
+restore-on-load logic still behaves correctly for every one of the ten
+layer routes (flagged as an open question during investigation, not
+addressed this session — contour-map removes the marker entirely, so
+`?lat=&lng=` may not mean the same thing there).
+
+Code-only, no schema/backend change — this one's in `swales-services`
+(`MapComponent.jsx`, `ReportAuthGateModal.jsx`), not `swales-backend`, so
+the branch+PR rule for backend/schema changes doesn't apply; not yet
+committed to `swales-services` as of this note (pending confirmation the
+change is wanted as-is before pushing).
