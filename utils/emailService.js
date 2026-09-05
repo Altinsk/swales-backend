@@ -80,6 +80,17 @@ const getEmailTemplate = (heading, message, buttonText, buttonUrl) => {
 // --- EXPORTED FUNCTIONS ---
 
 exports.sendVerificationEmail = async (email, token, src = "swales") => {
+  // Confirmed live 2026-09-05: when BASE_URL is unset, this template
+  // literal coerces `undefined` to the literal string "undefined" - the
+  // resulting "undefined/api/auth/verify-email/..." string has no
+  // protocol/host, so it's a relative URL. Clicking it inside a webmail
+  // preview (e.g. minuteinbox.com) silently resolves it against THAT
+  // site's own current page instead of erroring, producing a link that
+  // looks plausible but 404s on the wrong domain - exactly what broke a
+  // real signup. Fail loudly instead of building a broken link.
+  if (!process.env.BASE_URL) {
+    throw new Error("BASE_URL is not configured - cannot build a verification link.");
+  }
   const url = `${process.env.BASE_URL}/api/auth/verify-email/${src}/${token}`;
 
   const htmlContent = getEmailTemplate(
