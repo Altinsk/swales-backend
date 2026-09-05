@@ -7,10 +7,12 @@ left off."
 
 ## Last updated
 
-2026-09-05 (**Signup verification emails are not sending — needs Omar's
-action on the Resend dashboard, see below.** Also: Site comparison shipped
-and verified live, right after its Analyze-gate prerequisite; shareable
-link gated to signed-in users, resend-verification endpoint + dead env
+2026-09-05 (**Signup verification link — two bugs found and fixed on the
+same open PR; Omar's Resend account fix confirmed the email now sends,
+still worth double-checking BASE_URL is actually set in Vercel, see
+below.** Also: Site comparison shipped and verified live, right after its
+Analyze-gate prerequisite; shareable link gated to signed-in users,
+resend-verification endpoint + dead env
 var cleanup)
 
 2026-09-04 (Discord/Substack footer links wired in; field-level validation
@@ -1327,10 +1329,15 @@ quick pass next time a real session is available.
 Committed and pushed directly to `swales-services` `main` — code-only, no
 schema/backend change.
 
-## Signup verification emails silently not sending (2026-09-05) — needs Omar
+## Signup verification link broken — two separate bugs (2026-09-05)
 
 Omar reported: signed up, got "check your email," no email arrived. Root
-cause found and confirmed live:
+cause found and confirmed live. **Update**: Omar fixed the Resend
+account/key permission issue below and got the email — but the
+verification link inside it was itself broken, a second, unrelated bug,
+also found and fixed (see the second half of this entry).
+
+### Bug 1: emails not sending at all — fixed, and Omar's account fix confirmed it
 
 **The bug (fixed, PR open):** the Resend SDK does *not* throw when the API
 rejects a send — it resolves with `{ data: null, error }`. `emailService.js`'s
@@ -1379,12 +1386,47 @@ file). Likely explanations, to check in the Resend dashboard:
   low limits that suggest this specific key may be a restricted/test key
   rather than the account's main sending key.
 
-**What Omar needs to do:** open the Resend dashboard → API Keys, find the
-key matching this backend's `RESEND_API_KEY` env var (Vercel →
-swales-backend → Environment Variables, to see which key is actually
-deployed — it may differ from the local `.env` value tested here), and
-either grant it "Full access"/unrestricted sending, or create a new key
-scoped to (or unrestricted for) `permaculturetools.online` and update the
-env var. Then re-test a real signup. No code changes needed for this
-part — the fix above only makes the failure visible, it can't grant the
-key permission it doesn't have.
+**What Omar needed to do:** open the Resend dashboard → API Keys, find the
+key matching this backend's `RESEND_API_KEY` env var and either grant it
+"Full access"/unrestricted sending, or create a new key scoped to (or
+unrestricted for) `permaculturetools.online` and update the env var. —
+**Done**, confirmed 2026-09-05: a real signup now receives the email.
+
+### Bug 2: the link inside that email was itself broken — also fixed
+
+Once the email arrived, clicking its verify link (or the raw URL) landed
+on `https://www.minuteinbox.com/email/id/undefined/api/auth/verify-email/swales/<token>`
+— minuteinbox.com's own webmail-preview URL, not this backend at all,
+with an "error loading the email" failure.
+
+Traced by reproducing the exact URL algebra: `sendVerificationEmail`
+builds its link as `` `${process.env.BASE_URL}/api/auth/verify-email/...` ``
+with no fallback. If `BASE_URL` is unset, JS template literals coerce
+`undefined` to the literal string `"undefined"` — so the resulting href is
+the relative string `"undefined/api/auth/verify-email/swales/<token>"`
+(no protocol, no leading slash). Minuteinbox's webmail preview renders
+the email inside its own page (at `https://www.minuteinbox.com/email/id/undefined`,
+note the unrelated coincidence that *their* URL also contains the literal
+word "undefined" — that's minuteinbox's own routing, not connected to our
+bug); clicking a relative href there resolves it against that page's own
+URL rather than erroring, landing exactly on the reported broken address.
+A real email client (not a webmail preview) would likely have failed
+differently — a browser opening a bare relative path with no page context
+at all — but either way the link could never have worked.
+
+**Fixed**, same branch/PR as Bug 1
+(`fix/surface-resend-email-send-failures`): `sendVerificationEmail` now
+throws immediately if `BASE_URL` is falsy, instead of silently building a
+broken link — same "fail loudly instead of pretending success" principle
+as the Resend-error check above, and it's caught by the same
+`register`/`resendVerification` try/catch.
+
+**This does NOT fix the underlying misconfiguration** — `BASE_URL` still
+needs to actually be set correctly in whatever environment sends these
+emails (per the 2026-08/09 permaculturetools.online setup notes earlier in
+this file, it should already be pointing at the `permaculturetools.online`
+family in Vercel's Production env vars for `swales-backend` — worth
+double-checking it's actually saved there, since evidently something is
+still unset somewhere). Once genuinely set, the guard added here becomes
+a no-op safety net rather than an active blocker — re-test a real signup
+once both this PR is merged and `BASE_URL` is confirmed set.
