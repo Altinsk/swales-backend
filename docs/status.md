@@ -1356,11 +1356,8 @@ uses:
   }
 }
 ```
-Fixed on branch `fix/surface-resend-email-send-failures`
-(PR not yet opened — `gh` CLI isn't available in this environment, same as
-the resend-verification PR earlier; open it from
-`https://github.com/Altinsk/swales-backend/pull/new/fix/surface-resend-email-send-failures`):
-both functions now throw when Resend returns an `error`, and
+Fixed on branch `fix/surface-resend-email-send-failures`, **merged as
+PR #22**: both functions now throw when Resend returns an `error`, and
 `resendVerification`/`forgotPassword` — which had **no try/catch at all**
 before this — now catch it and return a real error instead of a false
 "check your email" (this was also a latent bug: an async Express 4 route
@@ -1414,12 +1411,14 @@ A real email client (not a webmail preview) would likely have failed
 differently — a browser opening a bare relative path with no page context
 at all — but either way the link could never have worked.
 
-**Fixed**, same branch/PR as Bug 1
-(`fix/surface-resend-email-send-failures`): `sendVerificationEmail` now
-throws immediately if `BASE_URL` is falsy, instead of silently building a
-broken link — same "fail loudly instead of pretending success" principle
-as the Resend-error check above, and it's caught by the same
-`register`/`resendVerification` try/catch.
+**Fixed**, on a fresh branch `fix/base-url-guard-verification-link`
+(Bug 1's PR had already been merged by the time this was found, so this
+needed its own PR — not yet opened, same `gh` CLI limitation; open from
+`https://github.com/Altinsk/swales-backend/pull/new/fix/base-url-guard-verification-link`):
+`sendVerificationEmail` now throws immediately if `BASE_URL` is falsy,
+instead of silently building a broken link — same "fail loudly instead of
+pretending success" principle as the Resend-error check above, and it's
+caught by the same `register`/`resendVerification` try/catch.
 
 **This does NOT fix the underlying misconfiguration** — `BASE_URL` still
 needs to actually be set correctly in whatever environment sends these
