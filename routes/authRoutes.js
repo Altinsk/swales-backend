@@ -5,6 +5,7 @@ const {
   forgotPassword,
   resetPassword,
   verifyEmail,
+  resendVerification,
   updateProfile, // New
   changePassword,
   getProfile, // New
@@ -20,6 +21,7 @@ router.post("/login", loginLimiter, login);
 router.post("/forgot-password", sensitiveActionLimiter, forgotPassword);
 router.post("/reset-password", sensitiveActionLimiter, resetPassword);
 router.get("/verify-email/:src/:token", verifyEmail);
+router.post("/resend-verification", sensitiveActionLimiter, resendVerification);
 
 // New Routes
 router.post("/logout", logout);

@@ -49,11 +49,16 @@ deferred** that carry real risk if ignored too long.
    **Scheduling decided 2026-08-27**: same as 2FA above — before launch
    whenever possible, not a hard gate.
 
-4. **No resend-verification-email endpoint.** — *Severity: Low.*
-   Verification links now expire in 24h (down from an accidental 30 days,
-   fixed 2026-08-24) — a user who misses the window has no self-service
-   way to get a new one; would need to contact support, since re-
-   registering with the same email fails today.
+4. ~~**No resend-verification-email endpoint.**~~ Done 2026-09-05 —
+   `POST /api/auth/resend-verification` added (`authController.js`'s
+   `resendVerification`, wired in `authRoutes.js` behind the same
+   `sensitiveActionLimiter` as `/register`/`/forgot-password`/
+   `/reset-password`). Mirrors `forgotPassword`'s enumeration-safe pattern:
+   same generic success response whether the account doesn't exist, is
+   already verified, or a new link was actually sent — only sends a fresh
+   24h token when a matching unverified user is found. Re-registering with
+   the same email still fails as before (out of scope for this item); use
+   this endpoint instead.
 
 5. **CORS allowlist requires manual updates whenever a new deployment
    domain exists — no dynamic discovery.** — *Severity: Low, but has
@@ -96,11 +101,15 @@ deferred** that carry real risk if ignored too long.
 
 ### Technical debt / cleanup
 
-8. **Dead env vars** (`DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASS`/
+8. ~~**Dead env vars** (`DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASS`/
    `config/database.js` in `swales-backend`; unused `EMAIL_USER`/
-   `EMAIL_PASS`/`Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins`)
-   — flagged during the `.env` hygiene pass, not removed. Cosmetic, no
-   functional risk.
+   `EMAIL_PASS`/`Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins`)~~
+   Done 2026-09-05 — `config/database.js` deleted (confirmed nothing
+   required/imported it; `models/index.js`'s `DATABASE_URL` path is the
+   only live connection mechanism), `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASS`
+   and the already-commented-out dead-vars block removed from
+   `.env.example`. Each real `.env` file still has these lines and can be
+   trimmed the same way at leisure — no functional risk either way.
 
 9. **Plant/element schema not yet reconciled with the long-term
    knowledge-graph vision** (~50-field schema, linked entity types). Worth
