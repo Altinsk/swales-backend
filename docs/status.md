@@ -11,9 +11,9 @@ left off."
 responses — found and fixed, PR open, see below.** Also this session: an
 env var mix-up during the domain-migration cleanup temporarily broke
 DATABASE_URL — fixed by Omar; both `swales-designer` and `swales-services`
-confirmed still pointing their `NEXT_PUBLIC_API_*` vars at the old
-`swales-backend.vercel.app` instead of `api.permaculturetools.online` —
-**needs Omar to update in Vercel, not yet done**; signup verification
+were found still pointing their `NEXT_PUBLIC_API_*` vars at the old
+`swales-backend.vercel.app` — **now fixed and re-verified live against
+the production bundles**; signup verification
 link — two bugs found and fixed (Resend account permissions + missing
 BASE_URL); Site comparison shipped; shareable link gated to signed-in
 users; resend-verification endpoint + dead env var cleanup)
@@ -1465,13 +1465,20 @@ not what `.env.example` says should be there):
 Both should be `https://api.permaculturetools.online` (+`/api` where
 applicable) now that the custom domain is finished. Not broken exactly —
 `swales-backend.vercel.app` still works — but not the intended final
-architecture, and **not yet fixed as of this note**; needs Omar to update
-both in Vercel (hit a "remove the public prefix or mark as Config"
-warning there, unrelated to the value itself — that's Vercel flagging
-that a `NEXT_PUBLIC_`-prefixed variable can't also be marked "Sensitive"
+architecture. Omar hit a "remove the public prefix or mark as Config"
+warning while updating these in Vercel — that's Vercel flagging that a
+`NEXT_PUBLIC_`-prefixed variable can't also be marked "Sensitive"
 encrypted storage, since Next.js bakes it into the browser bundle either
-way; the fix is to uncheck "Sensitive" on that variable, not to change
-the value or drop the prefix).
+way; fixed by unchecking "Sensitive" on the variable, not by changing the
+value or dropping the prefix.
+
+**Done, confirmed 2026-09-05** — re-verified live the same way (fetching
+the actual production JS chunks and checking what's baked in, not just
+trusting the dashboard): both frontends redeployed with new chunk hashes
+and both now resolve to `https://api.permaculturetools.online` (services'
+own `/api` suffix appended in code as before, designer's baked in with it
+already). No remaining `swales-backend.vercel.app` references found in
+either app's login-page bundle.
 
 Also worth double-checking while in there (couldn't verify these two
 remotely without live side effects — sending a real password-reset email
