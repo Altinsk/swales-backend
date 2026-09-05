@@ -7,9 +7,9 @@ left off."
 
 ## Last updated
 
-2026-09-05 (Analyze-gate for the single-pin map shipped and verified live —
-Site comparison unblocked, next up; also shareable link gated to signed-in
-users, resend-verification endpoint + dead env var cleanup — see below)
+2026-09-05 (Site comparison shipped and verified live, right after its
+Analyze-gate prerequisite; also shareable link gated to signed-in users,
+resend-verification endpoint + dead env var cleanup — see below)
 
 2026-09-04 (Discord/Substack footer links wired in; field-level validation
 errors added across auth forms in both frontends — see below)
@@ -1264,4 +1264,63 @@ quick pass next time this area is touched).
 Committed and pushed directly to `swales-services` `main` — code-only, no
 schema/backend change, matching this repo's frontend-UI pattern.
 
-This unblocks Site comparison (Phase A2 row above) — next up.
+This unblocked Site comparison (Phase A2 row above) — built the same
+session, see below.
+
+## Site comparison shipped (2026-09-05)
+
+Built immediately after the Analyze-gate prerequisite above, same design
+Omar approved earlier this session (see the paused-then-approved design
+notes further up this file).
+
+**New files**: `src/app/compare/page.js` (route + metadata) and
+`src/components/compare/CompareView.jsx` (~300 lines, self-contained,
+no dependency on `MapComponent`). One shared Mapbox mini-map with two
+markers (`#1D9E75` green for A, `#D85A30` orange for B). An
+"Editing: A / B" toggle decides which pin the next action moves — map
+click, a "Use my location" button, or typed lat/lng + Set all write to
+whichever pin is currently active, resolved via a `stateRef` mirror so
+the map's native click listener (bound once on mount) never closes over
+stale state. First two placements auto-advance A → B; once both are set,
+the toggle only changes on manual click.
+
+Placing/moving a pin only ever updates local `pinA`/`pinB` state — no
+`siteDataCache` interaction happens until the explicit **Compare**
+button, which is disabled until both pins are set. On click: `useAuth()`'s
+`user` gates the action (not `MapComponent`'s older
+`sessionStorage`-backed `userName` — new code uses the canonical
+mechanism), showing `ReportAuthGateModal` a third time with copy
+("Sign in to compare sites") when signed out. When signed in, both
+locations load in parallel via `loadSide()`, each calling the exact same
+`getOrFetch('solar'|'windPlanning'|'soil', lat, lng, () => fetchX(...))`
+pattern `MapComponent.jsx` already uses, plus `getLocationName` for the
+column header — so a location already analyzed on the main map (or
+picked for both A and B) hits the cache instead of re-fetching. Results:
+`grid-cols-1 lg:grid-cols-2`, each column stacking `SolarCard`/
+`WindDashboard`/`SoilCard` fed straight from the fetched data, independent
+loading/error state per side since they can resolve at different times.
+
+**Entry point**: a new `Columns2` toolbar icon in `MapComponent.jsx`, next
+to Share/Print in both desktop and mobile toolbars, plain
+`<Link href="/compare">` — always visible/enabled to everyone (including
+signed-out visitors), matching the discoverability requirement from
+Omar's tier decision (gate the action, not the page).
+
+Verified live in the browser preview: placing both pins fired zero
+network requests (`read_network_requests` showed nothing for `proxy/solar`
+until Compare); clicking Compare while signed out showed the new
+comparison-specific auth gate correctly, distinct from the report/
+share-link copy; the `/compare` route resolves with correct
+`<title>`/metadata; the new toolbar icon is reachable from `/solar-map`
+(and by extension every layer route, since the button lives in the shared
+toolbar) and navigates correctly; the results layout stacks to one column
+correctly at a 375px mobile viewport with the map and controls still
+usable. **Not tested**: the actual signed-in Compare flow end-to-end
+(would need a real logged-in session — no throwaway account created for
+this, same reasoning as prior sessions' QA passes) — the fetch logic
+itself is identical to `MapComponent.jsx`'s already-proven pattern, just
+called twice in parallel, so this is considered low-risk but worth a
+quick pass next time a real session is available.
+
+Committed and pushed directly to `swales-services` `main` — code-only, no
+schema/backend change.
