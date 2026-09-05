@@ -57,6 +57,22 @@ exports.register = async (req, res) => {
   }
 };
 
+exports.resendVerification = async (req, res) => {
+  const { email, src } = req.body;
+  const user = await User.findOne({ where: { Email: email } });
+  // Same response whether the account doesn't exist, is already verified,
+  // or a new link was actually sent - mirrors forgotPassword's
+  // enumeration-safe pattern above.
+  if (user && !user.Verified) {
+    const token = await generateEmailVerifyToken(user.Email);
+    await sendVerificationEmail(user.Email, token, src);
+  }
+  successResponse(
+    res,
+    "If that email is registered and not yet verified, a new verification link has been sent.",
+  );
+};
+
 exports.verifyEmail = async (req, res) => {
   // Define where to send them (Frontend Login)
   const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";

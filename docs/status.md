@@ -97,21 +97,15 @@ explicitly **not decided yet**).
   **Must be flipped back to `no-reply@swales.app` at the real cutover** — see
   new item 7 in the Cutover stage checklist below.
 
-**Still open, needs Omar:**
-1. **Google Cloud Console — deferred, not needed right now (Omar's call,
-   2026-08-27).** Skipping the OAuth client update for now means **Google
-   sign-in will not work on `permaculturetools.online` yet** — clicking it
-   will fail or redirect wrong, since the domain isn't in the OAuth client's
-   authorized origins/redirect URIs. Fine as long as testing doesn't depend
-   on Google sign-in specifically; native email/password sign-in works
-   (confirmed live — the whole point of finishing the domain/DNS work above
-   was to get this and the newsletter-subscribe flow testable end-to-end on
-   the real domain). Revisit when needed: add Authorized JavaScript origins
-   `https://permaculturetools.online` and `https://designer.permaculturetools.online`;
-   add Authorized redirect URIs
-   `https://permaculturetools.online/api/auth/callback/google` and
-   `https://designer.permaculturetools.online/api/auth/callback/google`
-   (NextAuth's standard callback path).
+**Google Cloud Console OAuth update — Done (2026-09-05).** Deferred as
+not-needed-right-now on 2026-08-27, then completed by Omar. Authorized
+JavaScript origins `https://permaculturetools.online` and
+`https://designer.permaculturetools.online`, and Authorized redirect URIs
+`https://permaculturetools.online/api/auth/callback/google` and
+`https://designer.permaculturetools.online/api/auth/callback/google` are
+now in the OAuth client. Google sign-in on `permaculturetools.online` should
+work end-to-end now — not yet click-through verified in this session, worth
+a quick check next time the domain is touched.
 
 ## Cutover stage: swapping in swales.app (future, not yet scheduled)
 
@@ -971,21 +965,17 @@ before the relocation — read them as "this repo," not literally `back`.
    refactor — touches every authenticated API call in both
    `swales-designer` and `swales-services` — worth its own session rather
    than squeezing in alongside other work.
-7. No resend-verification-email endpoint exists, and the verification
-   token now expires in 24h instead of the old (accidental) 30 days — a
-   user who doesn't click in time has no self-service recovery today
-   (would need to contact support, since re-registering with the same
-   email fails). Worth building if this becomes a real support burden;
-   flagged, not built.
+7. **Done (2026-09-05):** `POST /api/auth/resend-verification` added —
+   see `future-concerns.md` item 4. Branch
+   `feature/resend-verification-and-env-cleanup`, PR pending.
 8. **On hold until Omar opens a real business bank account:**
    `NEXT_PUBLIC_SUPPORT_LINK` (services) and the Stripe donation links
    (`NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10`/`_CUSTOM`, designer + services) —
    both need a real payout destination Omar doesn't have yet. Everything
    else on the code side is already wired and waiting on real values.
-9. Optional cleanup: remove the dead `DB_HOST`/`DB_NAME`/`DB_USER`/
-   `DB_PASS`/`config/database.js` and the unused `EMAIL_USER`/`EMAIL_PASS`/
-   `Password_Reset_Url`/`Email_verify_Url`/`AllowedOrigins` vars from
-   `swales-backend` — flagged, not removed, during the hygiene pass.
+9. **Done (2026-09-05):** dead env var cleanup — see `future-concerns.md`
+   item 8. Same branch/PR as item 7 above. Each real `.env` file still
+   carries the now-dead `DB_*` lines; harmless, trim at leisure.
 10. ~~`main` branch protection: decide "require a pull request before
    merging".~~ **Decided 2026-08-26: yes, always** — see `future-concerns.md`
    item 12 for the reason (the per-PR Neon migration check gets bypassed
