@@ -58,19 +58,27 @@ exports.register = async (req, res) => {
 };
 
 exports.resendVerification = async (req, res) => {
-  const { email, src } = req.body;
-  const user = await User.findOne({ where: { Email: email } });
-  // Same response whether the account doesn't exist, is already verified,
-  // or a new link was actually sent - mirrors forgotPassword's
-  // enumeration-safe pattern above.
-  if (user && !user.Verified) {
-    const token = await generateEmailVerifyToken(user.Email);
-    await sendVerificationEmail(user.Email, token, src);
+  try {
+    const { email, src } = req.body;
+    const user = await User.findOne({ where: { Email: email } });
+    // Same response whether the account doesn't exist, is already verified,
+    // or a new link was actually sent - mirrors forgotPassword's
+    // enumeration-safe pattern above.
+    if (user && !user.Verified) {
+      const token = await generateEmailVerifyToken(user.Email);
+      await sendVerificationEmail(user.Email, token, src);
+    }
+    successResponse(
+      res,
+      "If that email is registered and not yet verified, a new verification link has been sent.",
+    );
+  } catch (error) {
+    // sendVerificationEmail can throw (e.g. Resend API rejection) - without
+    // this catch, an async Express 4 handler that rejects just hangs the
+    // request instead of responding (confirmed no global rejection handler
+    // exists in server.js).
+    errorResponse(res, "Could not send the verification email. Please try again shortly.", error, 500);
   }
-  successResponse(
-    res,
-    "If that email is registered and not yet verified, a new verification link has been sent.",
-  );
 };
 
 exports.verifyEmail = async (req, res) => {
@@ -159,15 +167,22 @@ exports.logout = async (req, res) => {
 };
 
 exports.forgotPassword = async (req, res) => {
-  const { email, source } = req.body;
-  const user = await User.findOne({ where: { Email: email } });
-  // Same response whether or not the account exists - a distinguishable
-  // "User not found" here lets anyone enumerate every registered email.
-  if (user) {
-    const token = await generateResetToken(user.Email);
-    await sendResetPasswordEmail(email, token, source);
+  try {
+    const { email, source } = req.body;
+    const user = await User.findOne({ where: { Email: email } });
+    // Same response whether or not the account exists - a distinguishable
+    // "User not found" here lets anyone enumerate every registered email.
+    if (user) {
+      const token = await generateResetToken(user.Email);
+      await sendResetPasswordEmail(email, token, source);
+    }
+    successResponse(res, "If that email is registered, a reset link has been sent.");
+  } catch (error) {
+    // sendResetPasswordEmail can throw (e.g. Resend API rejection) - without
+    // this catch, an async Express 4 handler that rejects just hangs the
+    // request instead of responding.
+    errorResponse(res, "Could not send the reset link. Please try again shortly.", error, 500);
   }
-  successResponse(res, "If that email is registered, a reset link has been sent.");
 };
 
 exports.resetPassword = async (req, res) => {
