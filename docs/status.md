@@ -7,13 +7,16 @@ left off."
 
 ## Last updated
 
-2026-09-05 (**Signup verification link — two bugs found and fixed on the
-same open PR; Omar's Resend account fix confirmed the email now sends,
-still worth double-checking BASE_URL is actually set in Vercel, see
-below.** Also: Site comparison shipped and verified live, right after its
-Analyze-gate prerequisite; shareable link gated to signed-in users,
-resend-verification endpoint + dead env
-var cleanup)
+2026-09-05 (**Security: password hash/salt were leaking in API error
+responses — found and fixed, PR open, see below.** Also this session: an
+env var mix-up during the domain-migration cleanup temporarily broke
+DATABASE_URL — fixed by Omar; both `swales-designer` and `swales-services`
+confirmed still pointing their `NEXT_PUBLIC_API_*` vars at the old
+`swales-backend.vercel.app` instead of `api.permaculturetools.online` —
+**needs Omar to update in Vercel, not yet done**; signup verification
+link — two bugs found and fixed (Resend account permissions + missing
+BASE_URL); Site comparison shipped; shareable link gated to signed-in
+users; resend-verification endpoint + dead env var cleanup)
 
 2026-09-04 (Discord/Substack footer links wired in; field-level validation
 errors added across auth forms in both frontends — see below)
@@ -1429,3 +1432,110 @@ double-checking it's actually saved there, since evidently something is
 still unset somewhere). Once genuinely set, the guard added here becomes
 a no-op safety net rather than an active blocker — re-test a real signup
 once both this PR is merged and `BASE_URL` is confirmed set.
+
+### Update: env var mix-up while fixing BASE_URL, plus a live audit
+
+While adding the missing `BASE_URL` in Vercel, Omar accidentally pasted its
+value (`https://api.permaculturetools.online`) into `DATABASE_URL` instead
+— which would have broken every database-dependent request. Caught
+quickly: `models/index.js` passes `DATABASE_URL` straight into `new
+Sequelize(...)`, and Sequelize infers the dialect from the URL's own
+protocol, so a `https://` URL there throws synchronously
+(`"The dialect https is not supported"`) at module-load time, before
+Express even finishes initializing — meaning any request during that
+window would have hit Vercel's own generic platform error page, not one
+of our JSON responses (relevant given the audit below — confirms this
+particular incident didn't itself leak the connection string to any
+client). Restored the correct production Neon URL (verified live with a
+real `sequelize.authenticate()` call before handing it back) and Omar
+redeployed.
+
+That prompted a live audit of the `permaculturetools.online` migration
+more broadly, since it clearly hadn't been fully applied everywhere it
+was believed to be. Confirmed by extracting the actual constants baked
+into the **live production JS bundles** (fetching each app's own script
+chunks and searching their text — this reads exactly what really shipped,
+not what `.env.example` says should be there):
+
+- `swales-designer`'s live bundle has `NEXT_PUBLIC_API_URL` baked in as
+  `https://swales-backend.vercel.app/api`.
+- `swales-services`'s live bundle has `NEXT_PUBLIC_API_BASE_URL` baked in
+  as `https://swales-backend.vercel.app` (code appends `/api` itself).
+
+Both should be `https://api.permaculturetools.online` (+`/api` where
+applicable) now that the custom domain is finished. Not broken exactly —
+`swales-backend.vercel.app` still works — but not the intended final
+architecture, and **not yet fixed as of this note**; needs Omar to update
+both in Vercel (hit a "remove the public prefix or mark as Config"
+warning there, unrelated to the value itself — that's Vercel flagging
+that a `NEXT_PUBLIC_`-prefixed variable can't also be marked "Sensitive"
+encrypted storage, since Next.js bakes it into the browser bundle either
+way; the fix is to uncheck "Sensitive" on that variable, not to change
+the value or drop the prefix).
+
+Also worth double-checking while in there (couldn't verify these two
+remotely without live side effects — sending a real password-reset email
+or completing a Google OAuth round-trip): `SWALES_APP_URL`/`DESIGNER_APP_URL`
+on `swales-backend`, and `NEXTAUTH_URL`/`NEXT_PUBLIC_APP_BASE_URL` on both
+frontends, should all be pointing at their respective `permaculturetools.online`
+subdomains rather than old `*.vercel.app` project URLs.
+
+## Security: password hash/salt were leaking in API error responses (2026-09-05)
+
+Found while doing a security review Omar asked for after the env var
+confusion above ("check if anything is exposed that shouldn't be").
+
+**The vulnerability, confirmed live by reproducing it end-to-end:**
+`utils/responseHelper.js`'s `errorResponse(res, message, error, statusCode)`
+put the raw `error` argument directly into the JSON response body sent to
+the client, at every one of its ~15 call sites across `authController.js`,
+`projectController.js`, `elementController.js`, `shareController.js`,
+`uploadController.js`, and `socialAuthController.js`. For most error
+types this was harmless — a plain `Error` object serializes to `{}` via
+`JSON.stringify` (its `message` isn't enumerable) — but a
+`SequelizeValidationError`'s `errors[].instance` property is the **entire
+model instance being validated**. Reproduced directly: registering with a
+missing `firstName` but a real password returned
+```json
+{"success":false,"message":"...","data":null,"error":{"name":"SequelizeValidationError","errors":[{"...","instance":{"...","PasswordHash":"$2b$10$...","PasswordSalt":"$2b$10$...","..."}}]}}
+```
+— the bcrypt hash **and** its salt for the password just submitted,
+handed straight back in the HTTP response. Same code path is reachable
+from `resetPassword` and `changePassword` too (both set
+`PasswordHash`/`PasswordSalt` before a validation step that could fail).
+Not a plaintext-password leak, but a real one: it hands an attacker an
+offline-crackable hash + salt pair with no rate limiting, for any request
+that happens to trip a validation error — cheap to trigger deliberately
+(e.g. submit a real password with a deliberately-invalid `dateOfBirth` or
+missing name field) even without exploiting a real bug in the form.
+
+**Fixed** at the single choke point rather than each of the ~15 call
+sites: `errorResponse` now logs the full error server-side
+(`console.error`) and always sends `error: null` to the client. Checked
+first whether either frontend actually reads this field — grepped both
+`swales-designer` and `swales-services` for any `.data.error`/`response.error`
+usage; found none (both only ever display `message`), so this is a pure
+security fix with zero behavior change on either frontend. Verified live:
+reproduced the exact leak above before the fix, confirmed the response
+becomes `"error":null` after it while the full detail still appears in
+the server log.
+
+Also checked while in there, all clean:
+- No `.env`/`.env.local` files are tracked in any of the three repos
+  (only `.env.example` templates).
+- No hardcoded credentials anywhere in source across all three repos
+  (grepped for AWS key patterns, Stripe live/test secret key patterns,
+  PEM private key headers, Google API key patterns, and a generic
+  `secret/apiKey/password/token: "<long-string>"` pattern) — this
+  codebase consistently sources secrets from env vars, not literals.
+- Spot-checked the live `swales-designer`/`swales-services` bundles for
+  anything beyond the known `NEXT_PUBLIC_API_*` mismatch above — nothing
+  else unexpected turned up. `GOOGLE_CLIENT_SECRET`/`NEXTAUTH_SECRET`/
+  `PROXY_SECRET`/`WEATHER_API_KEY*` are all correctly un-prefixed in both
+  `.env.example` files, so Next.js's build already excludes them from the
+  client bundle structurally — that's a stronger guarantee than a manual
+  scan, but the scan found nothing to contradict it either.
+
+Fixed on branch `fix/stop-leaking-raw-errors-to-clients` (PR not yet
+opened — same `gh` CLI limitation as the other branches today; open from
+`https://github.com/Altinsk/swales-backend/pull/new/fix/stop-leaking-raw-errors-to-clients`).
