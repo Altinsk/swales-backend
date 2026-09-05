@@ -7,10 +7,9 @@ left off."
 
 ## Last updated
 
-2026-09-05 (Site comparison paused in favor of an Analyze-gate prerequisite
-on the existing single-pin map — full design below; also shareable link
-gated to signed-in users, resend-verification endpoint + dead env var
-cleanup — see below)
+2026-09-05 (Analyze-gate for the single-pin map shipped and verified live —
+Site comparison unblocked, next up; also shareable link gated to signed-in
+users, resend-verification endpoint + dead env var cleanup — see below)
 
 2026-09-04 (Discord/Substack footer links wired in; field-level validation
 errors added across auth forms in both frontends — see below)
@@ -1212,5 +1211,57 @@ add `handleAnalyze()` + toolbar button), `LayerDataPanel.jsx` (add the
 down to pin-move + geocode/elevation only). No changes needed to
 `siteDataCache.js`, service files, or card components.
 
-Not yet built as of this note — this is the next thing to implement,
-ahead of Site comparison above.
+**Built and verified live, 2026-09-05.** Implemented exactly as designed
+above — `runActiveLayerAnalysis` (new, in `MapComponent.jsx`) consolidates
+what used to be four separate auto-fire code paths (`handlePopup`'s
+branches, deleted entirely; `updateBasedOnLayer`'s precipitation/
+weather-forecast blocks, removed; `handleSetLocationFromInput`'s step 7,
+removed; `handleMyLocationClick` in `mapUtils.js`, stripped down to
+pin-move + geocode/elevation only, which also deleted both bugs' code
+paths). `clearPendingAnalysis` resets every layer's result state on every
+placement so a moved pin never shows stale numbers. `LayerDataPanel.jsx`
+gained a shared `AnalyzePrompt` component used across all eight
+analyzable layers (soil, solar, wind, altitude's text card, water stress,
+flooding, precipitation, weather forecast); the toolbar gained a
+`Sparkles` icon button (amber + pulsing when there's a pending analysis
+for the current pin+layer) next to My Location/Print/Share, in both
+desktop and mobile toolbars.
+
+One deliberate scope line: the on-map elevation color layer
+(`getAltitudeData`, feeds the actual paint layer for `/elevation-map` and
+`contourLayer`) was kept auto-firing, not gated — it renders the layer
+itself rather than being a discretionary analysis card, same category as
+the sun tracker's local compass/shadow drawing (also untouched, and free
+anyway since it's a local calculation, not a network call).
+
+Verified live in the browser preview (`swales-services` dev server,
+desktop viewport) across `/solar-map`, `/wind-planning-map`,
+`/elevation-map`, and `/soil-map`: confirmed clicking a new spot moves the
+pin and resolves the place name with zero analysis call firing
+(`read_network_requests` showed no new `fetchSolarData`-driven request
+until Analyze was pressed); confirmed the "ready to analyze `<place>`"
+prompt and pulsing toolbar button both appear correctly; confirmed
+pressing Analyze fires exactly one new request for the correct
+coordinates and populates the real card (tested on Solar — 70% at the
+default London-area pin vs. 44% at a moved Ireland pin, both real,
+distinct values); confirmed the wind layer's Analyze click still draws
+its 3km polygon square and loads real wind speed data; confirmed the
+elevation-map split works as designed — the on-map color legend/layer
+stayed live while the pin moved, while the SmartClimateCard panel
+correctly showed the "ready to analyze" prompt instead of stale data.
+Server compile logs stayed clean throughout (no errors) — only two
+console warnings unrelated to this change (a transient 502 from the
+external elevation API at one remote test coordinate, and pre-existing
+`/auth/me` 401s from testing signed-out). Not tested: the mobile
+toolbar/panel variant specifically (same code, applied identically via
+the same edits as desktop — not visually re-verified in a mobile
+viewport this session) and "My location"/typed-lat-lng as the trigger
+method specifically (click was used for all four verified layers; the
+code path is shared with drag/geolocate/typed-set via the same
+`clearPendingAnalysis`/`runActiveLayerAnalysis` functions, but worth a
+quick pass next time this area is touched).
+
+Committed and pushed directly to `swales-services` `main` — code-only, no
+schema/backend change, matching this repo's frontend-UI pattern.
+
+This unblocks Site comparison (Phase A2 row above) — next up.
