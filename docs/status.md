@@ -7,9 +7,10 @@ left off."
 
 ## Last updated
 
-2026-09-05 (Shareable link gated to signed-in users, monetization docs
-updated to match; resend-verification endpoint + dead env var cleanup —
-see below)
+2026-09-05 (Site comparison paused in favor of an Analyze-gate prerequisite
+on the existing single-pin map — full design below; also shareable link
+gated to signed-in users, resend-verification endpoint + dead env var
+cleanup — see below)
 
 2026-09-04 (Discord/Substack footer links wired in; field-level validation
 errors added across auth forms in both frontends — see below)
@@ -1085,6 +1086,131 @@ addressed this session — contour-map removes the marker entirely, so
 
 Code-only, no schema/backend change — this one's in `swales-services`
 (`MapComponent.jsx`, `ReportAuthGateModal.jsx`), not `swales-backend`, so
-the branch+PR rule for backend/schema changes doesn't apply; not yet
-committed to `swales-services` as of this note (pending confirmation the
-change is wanted as-is before pushing).
+the branch+PR rule for backend/schema changes doesn't apply. Committed and
+pushed directly to `swales-services` `main`.
+
+## Site comparison paused; Analyze-gate added as a prerequisite (2026-09-05)
+
+Started picking up Phase A2's "Site comparison" row (two locations
+side-by-side: wind/solar/soil). Before writing any code, walked through
+the design with Omar and asked him to explain the practical UX first —
+see the full back-and-forth in this session; summarizing the outcome here
+so a fresh session has it without replaying the conversation.
+
+**Investigation confirmed the reuse case was strong**: `fetchSolarData`,
+`fetchAllWindData`, `fetchSoilData` (`src/services/{solar,wind,soil}Service.js`)
+are already plain, stateless `(lat, lng) => data` functions, and the result
+cards (`SolarCard`, `WindDashboard`, `SoilCard`) are already self-contained,
+data-prop-driven components — `CombinedReportContent.jsx` already proves
+two instances of the same card can render side by side from different
+data. `MapComponent.jsx` itself (~4600 lines, route-coupled via
+`usePathname()`) is too heavy to reuse directly, so the plan was a new,
+small, self-contained `/compare` page instead.
+
+**Design settled with Omar** (not yet built):
+- One shared mini-map with two pins (A/B), not two separate maps and not
+  manual-lat/lng-only entry — an "Editing: A / B" toggle decides which pin
+  the next action (map click/drag, "Use my location", or typed lat/lng +
+  Set) moves, so any of the three input methods can set either side.
+- Nothing fetches until an explicit "Compare" button click — placing/
+  moving pins is always free, including the per-column place-name lookup
+  (deferred to Compare-time, not fetched live on every pin placement).
+- Gated **Free-for-contact**: sign-in required to actually run a
+  comparison (same tier/gate as the shareable link and report/design
+  downloads), but the entry point (a new "Compare" toolbar icon next to
+  the existing Share/Print buttons) stays visible to signed-out visitors
+  rather than being hidden — discoverability was an explicit ask, not
+  just "gate it and move on."
+- Auth gate reuses `ReportAuthGateModal` a third time (generalized last
+  session), new copy: "Sign in to compare sites."
+- Results: `grid-cols-1 lg:grid-cols-2`, two columns of the same three
+  stacked cards, both visible at once — no swap/tab interaction. A
+  mockup was shown in conversation to confirm this layout with Omar
+  before finalizing.
+
+**Then paused before implementation.** While confirming the "nothing
+costly fires without an explicit action" principle for the new Compare
+page, Omar asked whether the *existing* single-pin map has the same
+problem — investigation confirmed it does, worse: every pin placement
+today (click, drag, "My location", typed lat/lng) fires the active
+layer's real analysis call immediately, with zero debounce or
+confirmation anywhere in `MapComponent.jsx`. Decided this needed fixing
+*first*, as a genuine prerequisite, not scope creep — building Site
+comparison's careful call-gating next to an existing feature with
+unlimited waste would be an odd inconsistency, and the existing map's
+problem is objectively worse (it's been live and unthrottled this whole
+time). Site comparison is now paused until the item below ships; the
+design above is finalized and ready to build once unblocked.
+
+## Analyze-gate for the single-pin map (2026-09-05) — new Phase A prerequisite
+
+Added to `roadmap.md`'s Phase A table this session (not previously
+tracked anywhere) — see that row for the roadmap framing. This entry has
+the full investigation and design detail.
+
+**Confirmed via full trace of the fetch call chain**: every pin placement
+fires the active layer's real analysis call immediately and synchronously,
+with no debounce or confirmation anywhere:
+- `updateLocationAndTimeGeoInfo` (`MapComponent.jsx:1994`) only ever fires
+  two cheap calls itself (`getLocationName` reverse-geocode, `getElevation`)
+  — the expensive per-layer fetch is triggered separately by each of four
+  trigger paths: `clickHandler`/`dragEndHandler`'s `handlePopup()`
+  (lines 1618-1851), `handleMyLocationClick` (`src/utils/mapUtils.js:71-237`),
+  and `handleSetLocationFromInput` (`MapComponent.jsx:348-634`).
+- No `debounce`, `setTimeout`-as-delay, or confirmation dialog exists
+  anywhere in this flow (grepped for all three — the only `setTimeout`
+  calls nearby are Mapbox style-reload waits, unrelated).
+- One single click/drag/geolocate/typed-set on e.g. `/solar-map` costs 3
+  real network calls (geocode + elevation + solar) — not more, layers
+  aren't proactively pre-fetched for tabs the user isn't viewing. But
+  every one of those 3 calls fires whether or not the user actually meant
+  to land there — idle browsing, mis-clicks, a bad browser-geolocation
+  guess, or a typo'd coordinate all cost the same as a deliberate,
+  correct placement today.
+- **Two real bugs found along the way**, in `handleMyLocationClick`
+  (`mapUtils.js:172-178`): the `AltitudeLayer` branch bypasses
+  `getOrFetch` and duplicates the geocode/elevation call
+  `updateLocationAndTimeGeoInfo` just made two lines earlier; there's **no
+  branch at all for `windPlanningLayer`**, so "My location" on
+  `/wind-planning-map` silently never refreshes wind data for the new
+  position.
+
+**Design settled with Omar** (not yet built):
+- Placing/moving a pin, by any method, stays free — still resolves the
+  cheap place-name/elevation preview instantly, unchanged.
+- The active layer's real fetch never auto-fires. All four existing
+  auto-fire call sites get removed and replaced with one shared
+  `handleAnalyze()`, called only from a new Analyze action — reusing the
+  exact same `getOrFetch(...)` calls that already exist today, just
+  centralized instead of duplicated across four places. Fixes both bugs
+  above for free, since `handleMyLocationClick` no longer contains its own
+  fetch logic at all.
+- Presented two ways: a toolbar "Analyze" button (next to My
+  location/Print/Share) and an in-panel "ready to analyze" placeholder in
+  `LayerDataPanel.jsx`, shown wherever the real card would render,
+  whenever that layer's data for the current pin isn't loaded yet — the
+  primary, most-visible trigger.
+- **Scoped per category, matching today's existing per-tab fetch scoping**
+  — deliberately not a single "analyze everything" action, which would
+  reintroduce the same waste for anyone who only cares about one layer.
+  The existing Download Site Report button already covers "give me every
+  layer for this pin," so there's no need to duplicate that here.
+  Switching to a layer already analyzed for this exact pin still loads
+  instantly from the existing `siteDataCache` — no regression there.
+- Moving the pin again while a result is shown invalidates it — the panel
+  reverts to the "ready to analyze at `<new place>`" prompt rather than
+  leaving stale numbers on screen for a pin that's since moved.
+- Considered and explicitly rejected: a debounce-based approach (wait
+  ~700ms after the pin settles before auto-firing) — Omar's call, in
+  favor of the explicit-button model, both for consistency with the new
+  Compare page's design and to avoid a user waiting on an unexplained
+  delay with no visible cause.
+
+**Files planned**: `MapComponent.jsx` (remove the four auto-fire sites,
+add `handleAnalyze()` + toolbar button), `LayerDataPanel.jsx` (add the
+"ready to analyze" placeholder), `mapUtils.js` (strip `handleMyLocationClick`
+down to pin-move + geocode/elevation only). No changes needed to
+`siteDataCache.js`, service files, or card components.
+
+Not yet built as of this note — this is the next thing to implement,
+ahead of Site comparison above.
