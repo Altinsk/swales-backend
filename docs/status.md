@@ -97,21 +97,15 @@ explicitly **not decided yet**).
   **Must be flipped back to `no-reply@swales.app` at the real cutover** — see
   new item 7 in the Cutover stage checklist below.
 
-**Still open, needs Omar:**
-1. **Google Cloud Console — deferred, not needed right now (Omar's call,
-   2026-08-27).** Skipping the OAuth client update for now means **Google
-   sign-in will not work on `permaculturetools.online` yet** — clicking it
-   will fail or redirect wrong, since the domain isn't in the OAuth client's
-   authorized origins/redirect URIs. Fine as long as testing doesn't depend
-   on Google sign-in specifically; native email/password sign-in works
-   (confirmed live — the whole point of finishing the domain/DNS work above
-   was to get this and the newsletter-subscribe flow testable end-to-end on
-   the real domain). Revisit when needed: add Authorized JavaScript origins
-   `https://permaculturetools.online` and `https://designer.permaculturetools.online`;
-   add Authorized redirect URIs
-   `https://permaculturetools.online/api/auth/callback/google` and
-   `https://designer.permaculturetools.online/api/auth/callback/google`
-   (NextAuth's standard callback path).
+**Google Cloud Console OAuth update — Done (2026-09-05).** Deferred as
+not-needed-right-now on 2026-08-27, then completed by Omar. Authorized
+JavaScript origins `https://permaculturetools.online` and
+`https://designer.permaculturetools.online`, and Authorized redirect URIs
+`https://permaculturetools.online/api/auth/callback/google` and
+`https://designer.permaculturetools.online/api/auth/callback/google` are
+now in the OAuth client. Google sign-in on `permaculturetools.online` should
+work end-to-end now — not yet click-through verified in this session, worth
+a quick check next time the domain is touched.
 
 ## Cutover stage: swapping in swales.app (future, not yet scheduled)
 
