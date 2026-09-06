@@ -7,6 +7,12 @@ left off."
 
 ## Last updated
 
+2026-09-06 (**Site comparison usability pass** — fixed a real Lat/Lng
+sync bug, enlarged the map, added PDF export, gave Compare a real nav
+entry point; **password policy broadened** to accept any symbol (was
+silently rejecting `.` and others) with the rule now shown upfront on
+every signup/reset/change-password form, both repos — see below)
+
 2026-09-05 (**`verify-email` crashed/hung on every expired or invalid
 link — found while verifying SWALES_APP_URL/DESIGNER_APP_URL live, fixed,
 PR open, see below. Also security: password hash/salt were leaking in API
@@ -1619,6 +1625,81 @@ Also checked while in there, all clean:
   client bundle structurally — that's a stronger guarantee than a manual
   scan, but the scan found nothing to contradict it either.
 
-Fixed on branch `fix/stop-leaking-raw-errors-to-clients` (PR not yet
-opened — same `gh` CLI limitation as the other branches today; open from
-`https://github.com/Altinsk/swales-backend/pull/new/fix/stop-leaking-raw-errors-to-clients`).
+Fixed on branch `fix/stop-leaking-raw-errors-to-clients`, **merged as
+PR #24**.
+
+## Site comparison usability pass + password policy broadened (2026-09-06)
+
+Omar tried Site Comparison for real and reported a cluster of issues, plus
+a separate, unrelated signup complaint about the password rule. All in
+`swales-services` except the password fix, which also touches
+`swales-designer`.
+
+**Bug: Lat/Lng inputs didn't reflect the active pin.** Reported as "set B,
+set A, switch back to B — same point shows for both." Reproduced exactly:
+the inputs are plain controlled state, never synced from `pinA`/`pinB`
+when `activePin` changes — switching to B right after setting A left A's
+values sitting in the fields, so pressing Set again without noticing
+silently copied A's location onto B. Fixed with a `useEffect` keyed on
+`[activePin, pinA, pinB]` that always shows the active pin's real
+coordinates (or clears the fields if that pin isn't set yet). Verified
+live: set B to New York, set A to London, switched back to B — fields
+now correctly show New York, not London.
+
+**Map too small.** Fixed height was `320px` regardless of viewport —
+bumped to a responsive `320px → 420px → 520px` scale (mobile → tablet →
+desktop).
+
+**"Why only solar/wind/soil, not all the cards?"** Not an oversight —
+the original roadmap item and the plan Omar approved both scoped this to
+wind/solar/soil specifically, to keep Compare fast (6 fetches, not 14)
+and each column a reasonable length. Asked directly whether to expand to
+all 7 analysis layers now that the feature exists — **kept as-is**,
+recommended option.
+
+**"Printing the comparison should be implemented."** Built: a
+`generateComparisonReport` function
+(`src/utils/comparisonReportPdf.js` + `src/components/report/ComparisonReportContent.jsx`)
+mirroring the existing single-site report exactly — same off-screen
+render/html2canvas-capture/jsPDF-page-stitch approach, same
+`Section`/`data-report-section` convention — but reusing data
+`CompareView` already fetched via Compare rather than fetching fresh,
+since a comparison only ever downloads after both sides succeed. A
+"Download Comparison Report (PDF)" button appears once both sides have
+loaded. Verified live end-to-end: fetched real solar/wind/soil data for
+New York and London (bypassing the sign-in gate via a temporary
+`window.__debugCompare` exposure, removed before commit, since testing
+the authed UI flow itself would have needed a throwaway account — same
+reasoning as prior sessions' QA scope decisions), triggered the download,
+confirmed the PDF pipeline completes with no thrown errors.
+
+**"Compare isn't discoverable, just a button next to Print."** Asked how
+to fix it; Omar picked "give it a real entry point" over the toolbar-label
+or onboarding-tooltip alternatives. Added `/compare` as its own top-level
+link in `Header.jsx`'s shared `NavLinks` (both desktop and mobile nav),
+next to Services — matching how Designer already gets equal billing as
+its own site section rather than being buried in a submenu. Verified live:
+link navigates correctly and shows the active-page highlight.
+
+**Separately: password policy broadened.** Omar hit a real signup
+rejection with a `.` in the password and had no idea why, since the hint
+text just said "...number & symbol" without saying which symbols.
+Investigated: the regex only accepted 9 specific symbols
+(`@$!%*#?&^`) — anything else, including `.`, invalidated the *entire*
+password, not just the "special character" requirement. Also found the
+same regex hardcoded in **5 separate places** across both repos (each
+frontend's signup, reset-password, and account-settings change-password),
+with inconsistent error text between them.
+
+Broadened the rule in all 5 locations so *any* non-letter, non-digit,
+non-space character satisfies the symbol requirement, and added a
+permanent hint shown under the password field on every form (not just as
+an error after the fact): "8+ characters, with uppercase, lowercase, a
+number, and a symbol (e.g. . , ! @ # -). No spaces." Verified live in the
+browser on both `swales-services` and `swales-designer` signup pages: a
+password containing a period is now accepted with no error, where it
+previously failed.
+
+Committed and pushed directly to `main` in both `swales-services` and
+`swales-designer` — code-only, no schema/backend change, matching each
+repo's existing pattern for frontend-UI work.
