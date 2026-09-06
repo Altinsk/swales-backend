@@ -1548,12 +1548,20 @@ an invalid token now returns a fast `400` with the correct error page
 instead of crashing, and the server stays up for subsequent requests.
 Fixed on branch `fix/verify-email-crash-on-invalid-token` (PR not yet
 opened — same `gh` CLI limitation as the other branches today; open from
-`https://github.com/Altinsk/swales-backend/pull/new/fix/verify-email-crash-on-invalid-token`).
+Merged (Omar's call) directly rather than via a PR button — `gh` CLI
+still unavailable, so merged locally with `git merge --no-ff` and pushed
+straight to `main`; verified the merge was clean (syntax check, reviewed
+the diff) before pushing.
 
-**Still open**: `SWALES_APP_URL`/`DESIGNER_APP_URL` themselves couldn't be
-verified against production because of this bug blocking the check —
-worth re-running the same non-destructive bogus-token probe once this PR
-is merged and deployed.
+**Done, confirmed 2026-09-05**: redeployed automatically after the merge.
+Re-ran the same bogus-token probe against the live backend — now returns
+a fast `400` (was hanging before) — and both `SWALES_APP_URL` and
+`DESIGNER_APP_URL` came back correct in the resulting redirect links:
+`https://permaculturetools.online/login` and
+`https://designer.permaculturetools.online` respectively. This closes out
+the full env var audit from this session — every variable checked (either
+live or via `.env.example` review) is now confirmed correctly configured,
+or is an opaque secret with no side-effect-free way to verify further.
 
 ## Security: password hash/salt were leaking in API error responses (2026-09-05)
 
