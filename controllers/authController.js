@@ -82,16 +82,21 @@ exports.resendVerification = async (req, res) => {
 };
 
 exports.verifyEmail = async (req, res) => {
-  // Define where to send them (Frontend Login)
-  const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+  const { token, src } = req.params;
+  // Computed before the try block (and thus visible to the catch block
+  // below too) - confirmed live 2026-09-05 that having this declared
+  // inside try instead crashes the process with "ReferenceError: loginUrl
+  // is not defined" the moment verifyEmailVerifyToken throws, which is
+  // every single expired or invalid link - i.e. the entire error-path this
+  // redirect page exists for. On Vercel this manifested as the request
+  // hanging until the platform's own timeout rather than a fast response,
+  // since nothing catches the resulting unhandled rejection.
+  const loginUrl =
+    src == "swales"
+      ? `${process.env.SWALES_APP_URL}/login`
+      : `${process.env.DESIGNER_APP_URL}`;
 
   try {
-    const { token, src } = req.params;
-
-    const loginUrl =
-      src == "swales"
-        ? `${process.env.SWALES_APP_URL}/login`
-        : `${process.env.DESIGNER_APP_URL}`;
     const email = await verifyEmailVerifyToken(token); // Assuming this throws error if invalid
 
     await User.update(
