@@ -7,6 +7,24 @@ left off."
 
 ## Last updated
 
+2026-09-07 (**`swales-services`: weather forecast map's city temperature
+labels fixed** — they'd never actually worked. Root cause: the labels came
+from OpenWeatherMap's `data/2.5/box/city` bulk endpoint, a separate product
+this account's key was never granted access to (401 on every call,
+regardless of zoom) — confirmed the same key returns 200 on the standard
+point `/data/2.5/weather` endpoint and 401 on `box/city` specifically, and
+that this is unrelated to the earlier RainViewer→OWM precipitation-layer
+migration, which touched a different endpoint entirely. Fixed by dropping
+`box/city` and instead fetching each city visible in the viewport
+individually via the point endpoint that already works, against a new
+static `MAJOR_CITIES` list (`swales-services/src/lib/map/majorCities.js`,
+~120 cities), capped at 18 per viewport (nearest-to-center first) to bound
+request volume. Deleted the now-dead `weather-box` proxy route. Verified
+live in-browser at multiple zoom levels, no console/rate-limit errors.
+Shipped directly to `swales-services` `main` (`4a8c6b9`) — a `swales-services`
+frontend change, not backend, so it's outside this repo's branch+PR
+convention.)
+
 2026-09-06 (**Site comparison usability pass** — fixed a real Lat/Lng
 sync bug, enlarged the map, added PDF export, gave Compare a real nav
 entry point; **password policy broadened** to accept any symbol (was
