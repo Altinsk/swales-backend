@@ -7,6 +7,17 @@ left off."
 
 ## Last updated
 
+2026-09-08 (**Monetization framework revised again: full report and Compare
+both confirmed free-for-contact (reverting the 2026-08-27 report change);
+Core paid redefined as 3+ site comparison + new paid-only advisory modules
+(RainAdvisor, soil health score, crop suitability engine), $9/mo or $79/yr,
+subscription-only. `pricing/page.js` updated to match — real price shown,
+checkout disabled until Stripe exists. Also: the "Buy Me a Coffee" support
+link doesn't actually need Stripe/a bank account — decided to route it via
+PayPal instead, and a placeholder PayPal.me link was wired into
+`swales-services/.env.local` the same day so the button renders locally.
+See the dated entry below for full detail.**)
+
 2026-09-07 (**`swales-services`: weather forecast map's city temperature
 labels fixed** — they'd never actually worked. Root cause: the labels came
 from OpenWeatherMap's `data/2.5/box/city` bulk endpoint, a separate product
@@ -50,6 +61,90 @@ errors added across auth forms in both frontends — see below)
 2026-09-03 (Google sign-in on permaculturetools.online now in progress —
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
+
+## Monetization framework — revised 2026-09-08: report & Compare confirmed free-for-contact, Core paid redefined
+
+Omar reviewed the 2026-08-27 revision (which had moved the full site report
+to Core paid) and reversed it: **the full site analysis report stays
+free-for-contact**, same as the original 2026-08-24 decision — an account
+is required to download/print it, no payment. This also settles Site
+Comparison (shipped 2026-09-05/06 as free-for-contact, capped at 2 sites)
+as correctly scoped — it was never moved to paid and stays exactly as
+shipped.
+
+**Real problem this surfaced**: with both flagship features free-for-contact,
+Core paid's originally-intended differentiator ("multi-location comparison")
+no longer exists — Compare already ships that, free. Core paid needed a
+genuinely new definition, not a re-gating of something users already have
+(re-gating an existing free feature was explicitly rejected as the wrong
+move — it reads as taking something away, not adding value).
+
+**Redefined Core paid (decided 2026-09-08):**
+- **Compare 3+ sites** — Explorer/free Compare stays capped at 2 sites (A/B)
+  exactly as already shipped; Core removes the cap.
+- **Three new advisory modules, paid-only from launch, not retrofitted onto
+  existing free data**: RainAdvisor (irrigation/flood-risk/swale-sizing
+  guidance layered on the existing free precipitation card), a composite
+  soil health score, and a crop suitability engine. **None of these are
+  built yet** — all three are still Phase A2 backlog rows in `roadmap.md`,
+  not started. The raw underlying data (precipitation, soil, etc.) stays
+  free; the interpretive/advisory layer built on top of it is the paid
+  product — so launch, whenever it happens, never takes anything away from
+  a free user.
+- **No watermark/upsell footer** on downloaded reports — carried over from
+  the original 2026-08-24 framing, unaffected by this revision.
+
+**Selling mechanism — decided 2026-09-08**: subscription-only, no one-time
+purchase option. Core paid sells ongoing access (uncapped comparison sites,
+ongoing access to the advisory modules), not a single deliverable — the
+market pattern for "removes a cap / adds ongoing capability" is subscription
+(Canva Pro, Grammarly Premium), not a per-use purchase (which fits a
+one-off deliverable like a CarFax vehicle report — not what's being sold
+here).
+
+**Price — decided 2026-09-08**: $9/month or $79/year.
+
+**Technical note on gating, given Vercel's stateless serverless functions**:
+follows the same pattern already proven for auth — a `Users.SubscriptionStatus`
+column (new, not yet added) read fresh from the Neon DB on every protected
+request, mirroring how `protect` middleware already reads
+`PasswordChangedAt`/`IsBlackListed` per-request instead of caching anything
+in server memory. Vercel's lack of a persistent server process is a
+non-issue as long as the database (not memory) stays the source of truth,
+same as today. One real implementation detail to get right when this is
+actually built: Stripe webhook handlers need the **raw, unparsed** request
+body to verify the signature, so that specific API route will need
+body-parsing disabled — a known, documented Next.js/Vercel config step, not
+a blocker.
+
+**`pricing/page.js` updated to match, 2026-09-08**: collapsed from the old
+aspirational 4-tier ladder (Explorer/Homestead/Farm & Business/Industrial —
+three of which were placeholder "Coming Soon" cards with invented feature
+lists and no real plan behind them) down to the actual 2-tier structure now
+decided: **Explorer** (free — all maps + full canvas, sign-in unlocks
+report/design downloads, share links, and 2-site Compare, all still free)
+and **Core** ($9/mo or $79/yr — real price now shown, per Omar's explicit
+instruction to update pricing now even though checkout isn't live). Core's
+signup button stays disabled/"Coming Soon" — checkout can't go live until
+Stripe is wired, itself still blocked on Omar opening a business bank
+account. The price shown is a confirmed decision, not a placeholder; only
+the checkout mechanism behind it is the placeholder.
+
+**Separately, 2026-09-08: "Buy Me a Coffee" support link found to be
+independently unblockable.** `NEXT_PUBLIC_SUPPORT_LINK` (flagged since
+2026-08-23 as "on hold until Omar opens a business bank account" — see the
+env-var-gaps entry earlier in this file) doesn't actually need Stripe or a
+bank account: PayPal lets funds sit in a PayPal balance indefinitely, only
+requiring a bank account at *withdrawal* time. Recommended: open a
+**PayPal Business account** (not Personal, for clean tax/1099-K separation
+from personal funds) and wire the support link to it now, independent of
+the Core-paid Stripe work. **Placeholder wired the same day**: `.env.local`
+now has `NEXT_PUBLIC_SUPPORT_LINK=https://paypal.me/REPLACE_ME` so the
+"☕ Support Us" button renders in local dev; `.env.example`'s comment
+updated to record the PayPal decision. `Footer.jsx` itself needed no code
+change — it already renders conditionally on this env var being set. Still
+needs Omar to actually create the PayPal account, get a real link, and set
+it in Vercel's production env for `swales-services`.
 
 ## Correction 2026-09-03: two Phase A2 roadmap rows were already done
 
@@ -1005,11 +1100,17 @@ before the relocation — read them as "this repo," not literally `back`.
 7. **Done (2026-09-05):** `POST /api/auth/resend-verification` added —
    see `future-concerns.md` item 4. Branch
    `feature/resend-verification-and-env-cleanup`, PR pending.
-8. **On hold until Omar opens a real business bank account:**
-   `NEXT_PUBLIC_SUPPORT_LINK` (services) and the Stripe donation links
-   (`NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10`/`_CUSTOM`, designer + services) —
-   both need a real payout destination Omar doesn't have yet. Everything
-   else on the code side is already wired and waiting on real values.
+8. **Partially unblocked 2026-09-08.** The Stripe donation links
+   (`NEXT_PUBLIC_STRIPE_LINK_3`/`_5`/`_10`/`_CUSTOM`, designer + services)
+   still need a real business bank account before Stripe can issue them.
+   `NEXT_PUBLIC_SUPPORT_LINK` (services only) no longer needs to wait on
+   that — decided 2026-09-08 to route it via PayPal instead (no bank
+   account required to receive funds), and a placeholder value
+   (`https://paypal.me/REPLACE_ME`) was set in `.env.local` the same day so
+   the "☕ Support Us" button in `Footer.jsx` renders locally. Still needs
+   Omar to actually open a PayPal Business account and hand over the real
+   link — see the 2026-09-08 monetization entry above for the full
+   reasoning.
 9. **Done (2026-09-05):** dead env var cleanup — see `future-concerns.md`
    item 8. Same branch/PR as item 7 above. Each real `.env` file still
    carries the now-dead `DB_*` lines; harmless, trim at leisure.
