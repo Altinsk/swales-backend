@@ -72,18 +72,20 @@ deferred** that carry real risk if ignored too long.
 
 ### Product / business decisions pending
 
-6. **Monetization framework — Decided 2026-08-24, revised 2026-08-27**
-   (Priestley 4-product ladder, see `status.md` for full detail). The full
-   site analysis report now requires payment (Core paid), not just an
-   account (free-for-contact) — only design/canvas downloads stay
-   free-for-contact. **Three things still open**: (1) the actual selling
-   mechanism for a single-location report — subscription-only, one-time
-   purchase, or both — not yet decided; (2) actual subscription/purchase
-   price points haven't been set; (3) `swales-services/src/app/pricing/page.js`'s
-   copy still shows the old pre-decision aspirational tier sketch and is
-   now further out of date — worth updating before this is communicated
-   externally, not urgent since nothing is purchasable yet (blocked on
-   Stripe/bank account regardless).
+6. ~~**Monetization framework — Decided 2026-08-24, revised 2026-08-27,
+   revised again 2026-09-08.**~~ **Resolved (as a decision) 2026-09-08**,
+   still blocked on Stripe/bank account for actually going live. Final
+   shape: the full site report and Site Comparison (2 sites) both stay
+   **free-for-contact** — the 2026-08-27 change moving the report to paid
+   was reverted. **Core paid** ($9/mo or $79/yr, subscription-only, no
+   one-time option) = uncapped Compare (3+ sites) + three new paid-only
+   advisory modules not yet built (RainAdvisor, soil health score, crop
+   suitability engine) + no watermark on downloads. `pricing/page.js`
+   updated 2026-09-08 to show the real price with checkout disabled. See
+   `status.md`'s 2026-09-08 entry for the full reasoning. **Still
+   open**: the three advisory modules themselves aren't built yet (Phase
+   A2 backlog), and the actual Stripe/subscription-status wiring hasn't
+   started (blocked on Omar opening a business bank account).
 
 7. ~~**Wind turbine sizing** — decide whether to use real wind-speed data
    vs. the current stub that matches `wind.txt` verbatim (including an
