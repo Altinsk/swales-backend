@@ -7,6 +7,24 @@ left off."
 
 ## Last updated
 
+2026-09-08 (**RainAdvisor built — the first Core-paid advisory module.**
+Real, named methodology throughout: SCS/NRCS Curve Number runoff method,
+a USDA-NRCS texture-based Hydrologic Soil Group approximation, and
+standard field-capacity/wilting-point irrigation scheduling — not a token
+feature, per Omar's standing instruction that every advisory module must
+be genuinely significant. Three sections (irrigation timing, near-term
+storm-runoff risk cross-referenced against WRI Aqueduct's regional flood
+category, and an interactive swale/water-harvesting sizing tool with
+catchment area/land-cover/design-storm controls), wired into the
+Precipitation tab below the existing free `PrecipitationCard`. Verified
+live in the browser with hand-checked math (CN=98 roof/25mm storm/100m²
+→ 1.97m³, confirmed exactly; CN=55 mulched-bed/100mm storm/250m² → 3.21m³,
+confirmed). Marked with a "Core" pill but **not hard-gated yet** — no
+Stripe/subscription-status infrastructure exists to gate against, so it's
+visible to everyone for now; a real entitlement check needs wiring before
+public launch (see the code comment at the top of `RainAdvisor.jsx`). See
+the dated entry below for full technical detail.**)
+
 2026-09-08 (**Monetization framework revised again: full report and Compare
 both confirmed free-for-contact (reverting the 2026-08-27 report change);
 Core paid redefined as 3+ site comparison + new paid-only advisory modules
@@ -61,6 +79,101 @@ errors added across auth forms in both frontends — see below)
 2026-09-03 (Google sign-in on permaculturetools.online now in progress —
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
+
+## RainAdvisor built — 2026-09-08, first Core-paid advisory module
+
+Omar's standing instruction when starting this: every advisory feature
+(RainAdvisor first, then the soil health score and crop suitability engine
+still to come) must be a genuinely significant, "top class" advisor, not a
+minimal/stub implementation — since these are now the actual paid product
+(see the monetization entry above). Built accordingly, in
+`swales-services`:
+
+**`src/services/rainAdvisorService.js`** — pure logic, no React/network,
+mirroring the existing `smartClimateAdvisor.js`/`smartSolarAdvisor.js`
+pattern. Three real, named methodologies, not arbitrary heuristics:
+- **Runoff**: the SCS/NRCS Curve Number method (USDA NEH Part 630 Ch. 10;
+  curve numbers from the published TR-55 tables) — `Q = (P−0.2S)²/(P+0.8S)`,
+  `S = 25400/CN − 254`. Four land-cover presets (mulched bed, pasture,
+  bare soil, roof/paved — the last flat at CN=98 regardless of soil, since
+  impervious surfaces don't infiltrate).
+- **Hydrologic Soil Group**: approximated from SoilGrids' clay/sand
+  percentages per the same "texture shortcut when no full soil survey
+  exists" approach published in NRCS extension engineering guides —
+  documented in-code as an approximation, same caveat style
+  `terrainAnalysis.js` already uses for its own slope thresholds.
+- **Irrigation timing**: standard field-capacity/wilting-point Available
+  Water Capacity (from SoilGrids' `waterContent33kPa`/`waterContent1500kPa`,
+  already fetched by the existing Soil tab) against the 3-day rainfall
+  forecast, with the "50% Management Allowed Depletion" rule of thumb for
+  when to actually irrigate — a real irrigation-scheduling convention, not
+  an invented threshold.
+- **Swale/water-harvesting sizing**: runoff volume (from the same CN
+  method, for a user-chosen design storm 10-100mm and catchment area) run
+  through two trapezoidal swale cross-section presets to give a concrete
+  "dig this many metres" answer, plus slope guidance that reuses
+  `terrainAnalysis.js`'s existing 2-15% swale-suitability band when a
+  Contour Analysis has already been run for the site (falls back to a
+  generic prompt otherwise).
+
+**`src/components/ui/RainAdvisor.jsx`** — presentation, mirroring
+`SmartSolarAdvisor.jsx`'s visual conventions exactly (BlockHeader,
+tooltips, verdict banners). Self-fetches soil + flood-risk data via the
+existing `getOrFetch` cache (instant if the user already visited those
+tabs this session, one real fetch otherwise) — reasoned as an extension of
+the Precipitation tab's own existing Analyze-gate (the user already opted
+into analysis to reach this tab) rather than a new silent auto-fetch.
+Interactive controls (catchment area, land cover, design storm, root
+depth) recompute live via `useMemo`. Carries a small "Core" pill but is
+**not hard-gated** — no Stripe/subscription-status column exists yet to
+gate against (see the monetization entry above), so it's fully functional
+for everyone until that infrastructure exists; a code comment at the top
+flags this explicitly so it isn't forgotten before public launch.
+
+**Wired into `LayerDataPanel.jsx`**, below the existing free
+`PrecipitationCard` on the Precipitation tab — matching `roadmap.md`'s own
+note to "layer in after precipitation_card ships, the same way
+SmartSolarAdvisor was bolted onto the sun tracker."
+
+**Real bug found and fixed while wiring this in**: `LayerDataPanel` was
+receiving `sunLat`/`sunLon` as its only lat/lng props, but those are only
+ever updated inside a `useEffect` gated on `mapLayers.sunTrackerLayer` —
+they silently stay `null` on every other layer, including Precipitation.
+RainAdvisor's own soil/flood-risk fetch never fired because of this (the
+component sat stuck on its loading skeleton indefinitely — a second bug,
+now also fixed: the effect's early-return guard didn't clear `loading`).
+Fixed at the source instead of special-casing RainAdvisor: `MapComponent.jsx`
+already tracks a layer-agnostic current-pin position in
+`currentLocationName.latitude`/`.longitude` (used for the Geodata panel),
+so both `<LayerDataPanel>` call sites (desktop + mobile) now also pass
+`pinLat`/`pinLng` from that same state — available to any future
+layer-agnostic feature, not just this one.
+
+**Verified live in the browser** (`swales-services` dev server,
+`/water-precipitation-map`): confirmed `/api/proxy/soil/*` and
+`/api/proxy/flood-risk` fire exactly once each per pin (cache-shared with
+the Soil/Flooding tabs, confirmed via `read_network_requests`); hand-
+verified the runoff math against the displayed numbers twice — CN=98
+(roof), 25mm design storm, 100m² catchment → 1.97m³ (calculated
+independently as 19.69mm × 100m² = 1.97m³, exact match) and CN=55
+(mulched bed), 100mm storm, 250m² → 3.21m³ (calculated independently as
+12.83mm × 250m² = 3.21m³, exact match); confirmed both swale-profile
+lengths (14.6m small / 3.1m large) against the trapezoidal cross-section
+formula by hand; confirmed live recompute on changing every control
+(catchment number input, land-cover/design-storm/root-depth selects); this
+specific London point had `NA` soil water-content data from SoilGrids, so
+the Irrigation section's honest "not enough data" fallback path was also
+exercised for real, not just assumed to work. No RainAdvisor-related
+console errors — remaining console errors were pre-existing, unrelated
+map-tile rate-limiting (429s against the shared dev OpenWeatherMap/Mapbox
+keys) already present before this session's changes.
+
+**Not yet done**: soil health score and crop suitability engine (the
+other two Core-paid modules, still not started); the real subscription
+gate (tracked as `future-concerns.md` item 17 — must be closed before
+this goes live as an actual paid feature); mobile-viewport visual check
+specifically (same code path as desktop, not re-verified in a narrow
+viewport this session).
 
 ## Monetization framework — revised 2026-09-08: report & Compare confirmed free-for-contact, Core paid redefined
 

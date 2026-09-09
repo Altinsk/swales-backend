@@ -265,6 +265,26 @@ deferred** that carry real risk if ignored too long.
     unremarkable average wind and "Moderate" suitability despite real
     tornado risk) — it would only ever be an additional, separate badge.
 
+### Monetization / access control
+
+17. **RainAdvisor (and every future Core-paid advisory module) ships with
+    no real entitlement gate.** — *Severity: Low now, rising to High once
+    Stripe/subscription billing exists.* Built 2026-09-08 as the first of
+    three Core-paid advisory modules (see the monetization decision in
+    `status.md`), marked with a "Core" pill in the UI, but fully visible
+    and functional to every visitor — signed in or not, paid or not.
+    Deliberate for now: there's no `Users.SubscriptionStatus` column, no
+    Stripe webhook handler, and no live subscriber base to protect revenue
+    from, so building a real gate ahead of that infrastructure would be
+    premature. **Must be fixed before RainAdvisor (and the soil health
+    score / crop suitability engine once built) actually go live as
+    paid** — the fix is a straightforward extension of the existing
+    `protect`-middleware pattern (DB-backed per-request check, same as
+    `PasswordChangedAt`/`IsBlackListed`), not a new architecture; see
+    `status.md`'s 2026-09-08 RainAdvisor entry for the exact reasoning and
+    the code comment at the top of `RainAdvisor.jsx` where this is flagged
+    inline.
+
 ---
 
 ## Resolved
