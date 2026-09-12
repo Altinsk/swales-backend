@@ -11,6 +11,7 @@ const uploadRoutes = require("./routes/uploadRoutes");
 const shareRoutes = require("./routes/shareRoutes");
 const elementRoutes = require("./routes/elementRoutes");
 const contactRoutes = require("./routes/contactRoutes");
+const subscribeRoutes = require("./routes/subscribeRoutes");
 const path = require("path");
 
 const db = require("./models");
@@ -49,6 +50,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/shares", shareRoutes);
 app.use("/api/elements", elementRoutes);
 app.use("/api/contact-us", contactRoutes);
+app.use("/api/sub", subscribeRoutes);
 
 app.post("/api/temporal", async (req, res) => {
   axios
