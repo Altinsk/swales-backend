@@ -164,6 +164,19 @@ long-stale domain already removed from the CORS allowlist back on
 real, current logo once `swales-services` redeploys. Stays PNG
 deliberately (email-client SVG support is unreliable).
 
+**Follow-up, same day**: Omar supplied a corrected dark-logo source file
+and asked for it to replace the one already shipped, flagging "a mistake
+with the previous one." Diffed the two files directly: they turn out to
+render **identically** — same paths, same final colors — the only
+difference is which internal CSS class name maps to which color (e.g.
+the wordmark is `cls-1` in one file and `cls-2` in the other, but both
+map to `#fff` either way). Whatever the concern was, it wasn't a visual
+difference in this file. Replaced `footer-logo.svg`
+(`swales-services`) and `logo-dark.svg` (`swales-designer`) with the
+exact file supplied anyway — removes any doubt regardless — and
+re-verified live on both actual dark backgrounds (the footer, and
+designer's login page) to confirm no regression.
+
 **Not replaced, flagged instead**: `swales-designer/public/favicon.ico`
 — confirmed unreferenced in any source file (Next.js's `metadata.icons`
 config points at `fab-icon.png` instead), so browsers never actually
