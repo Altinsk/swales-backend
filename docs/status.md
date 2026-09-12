@@ -97,6 +97,82 @@ errors added across auth forms in both frontends — see below)
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
 
+## Specialized Reports page built, priced, and gated — 2026-09-12
+
+Omar confirmed pricing ($159 one-time) and asked for the real page,
+nav-placed between Consultations and Blog, with v1 exports (GeoJSON,
+CSV, KML, DXF/CAD). Built in `swales-services`:
+
+**Real export generation — `src/utils/siteDataExport.js`**, wired against
+actual analyzed contour data (not the earlier synthetic-hill spike).
+`@tarikjabiri/dxf` and `utm` are now real dependencies (previously only
+installed in the isolated spike project). All four formats share one
+`extractIsolines()` helper (a band's polygon ring boundary = the contour
+line, same technique validated in the spike):
+- **GeoJSON** — LineString per contour, straight passthrough of real data.
+- **CSV** — flat `elevation_m,point_index,lat,lng` table.
+- **KML** — hand-written (no new dependency needed — simple enough as a
+  template string), one `<Placemark>` per contour line, opens in Google
+  Earth.
+- **DXF** — same technique as the spike, now against real data: UTM
+  projection (the `utm` package, already used elsewhere in this app) +
+  one CAD layer per elevation level.
+
+**Verified directly** (not just eyeballed): ran all four exporters
+against a realistic mock contour GeoJSON matching `terrainAnalysis.js`'s
+actual output shape — confirmed valid JSON, correct KML structure (2
+Placemarks for 2 mock bands), and a valid DXF (has an ENTITIES section,
+both expected per-elevation layers present).
+
+**Real data threading required a small, additive state change**:
+`contourAnalysisSummary` only ever stored the summary stats, not the full
+contour GeoJSON geometry needed for export. Added a sibling
+`contourGeoJSON` state in `MapComponent.jsx`, set alongside the existing
+summary in `contourLayer.js`'s `analyzeContoursServerSide` (new
+`setContourGeoJSON` param) and cleared alongside it too. Threaded through
+both `<LayerDataPanel>` render sites → `ContourAnalysisCard`, which now
+also accepts a `contours` prop.
+
+**Pricing & gating — the honest version, given no Stripe exists**:
+Omar asked for this "gated" at $159 one-time. With no payment
+infrastructure at all (not even Core paid's disabled-checkout stage),
+the closest honest equivalent is **enquiry-based, manually fulfilled** —
+the same model Consultations already uses, just with a fixed price shown
+instead of "quote after contact." `ContourAnalysisCard.jsx` shows a
+"🔒 Full Data Export — $159 one-time" teaser (only once a real analysis
+exists) linking to the new page — it does **not** expose working
+download buttons directly, since there's no way to actually collect
+payment before generating the file. The new
+**`/specialized-reports` page** carries the full pitch, format
+breakdown, a mention that the free "Ask about this site" Q&A is already
+included, and a request form (reusing the existing `sendMessage`
+service, subject `"Specialized Data Package Enquiry ($159)"`) — visitor
+submits, Omar follows up to arrange payment (PayPal, already set up for
+the coffee link) and manually generates/emails the export.
+
+**Nav**: `Specialized Reports` added between `Consultations` and `Blog`,
+per Omar's placement instruction.
+
+**Verified live in the browser**: nav order correct; `/specialized-reports`
+renders fully (price, 4 format cards, Q&A callout, working enquiry form);
+`ContourAnalysisCard` renders its normal "draw a rectangle" placeholder
+with no error and no teaser when `contours` is null (the common case).
+**Not verified**: the teaser's actual on-screen appearance after a real
+rectangle-draw-and-analyze in the browser — the map's draw tool proved
+fiddly to drive through this session's browser-automation tooling test
+after several attempts; the export *logic* was verified directly instead
+(see above), and the conditional render (`{contours && (...)}`) is simple
+enough that this is considered low-risk, but worth a real click-through
+next time this area is touched.
+
+**What "V1" and "V2" actually mean here, since it came up**: this session
+never built two separate shipped versions. "V1" was always the
+recommended *scope* for one single page (GeoJSON+CSV+KML+DXF, no AI) —
+that's what's built now. "V2" was the *deferred* AI Q&A idea — which
+also got built, but as the free, ungated, guided (non-LLM) "Ask about
+this site" panel instead, not as part of this paid page. There is no
+separate "V2 page."
+
 ## "Ask about this site" guided Q&A built — 2026-09-12
 
 Built the guided/rules-based Q&A recommended over an LLM (see the
