@@ -9,7 +9,11 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // --- CONFIGURATION ---
 // Replace these URLs with your actual asset links
 const COMPANY_NAME = "Swales";
-const LOGO_URL = "https://garden-desinger.vercel.app/logo.png"; // Replace with your hosted logo
+// Fixed 2026-09-12 — was pointing at "garden-desinger.vercel.app", the same
+// typo'd legacy domain already flagged and removed from the CORS allowlist
+// on 2026-08-24. Email clients need PNG (SVG support is unreliable), so
+// this stays a raster asset, unlike the on-page logos elsewhere.
+const LOGO_URL = "https://permaculturetools.online/images/logo.png";
 const TWITTER_URL = "https://twitter.com";
 const INSTAGRAM_URL = "https://instagram.com";
 const WEBSITE_URL = process.env.BASE_URL || "https://yourwebsite.com";
