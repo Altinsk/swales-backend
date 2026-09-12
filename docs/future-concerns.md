@@ -280,6 +280,16 @@ deferred** that carry real risk if ignored too long.
     `neon_workflow.yml` CI check will apply and validate it on an
     isolated branch once the PR opens. See `status.md`'s 2026-09-12 entry.
 
+### Technical debt / cleanup (continued)
+
+20. **`swales-designer/public/favicon.ico` is stale (old logo) and
+    unreferenced.** — *Severity: Low.* Found 2026-09-12 during the logo
+    rollout: Next.js's `metadata.icons` config points at `fab-icon.png`
+    (already updated to the new logo), so `favicon.ico` is never actually
+    served by this app — browsers won't pick it up. Left as-is rather than
+    regenerating a multi-resolution `.ico` for a dead file. Worth
+    revisiting only if something starts referencing it directly.
+
 ### Monetization / access control
 
 19. **Specialized Data Package ($159 one-time) has no automated payment or

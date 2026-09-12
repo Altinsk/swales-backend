@@ -7,6 +7,16 @@ left off."
 
 ## Last updated
 
+2026-09-12 (**Logo updated everywhere across both frontend apps** — new
+light/dark SVG variants, favicons regenerated from a cropped icon-only
+mark, PDF report generators deliberately left on PNG (`html2canvas`
+compatibility), and a real design bug caught by checking live rather
+than trusting a static audit: `swales-designer`'s login/signup pages are
+actually dark-background, not light as first reported — the dark-text
+logo was nearly invisible there until fixed. Also fixed a stale,
+typo'd logo URL in the backend's email template. See the dated entry
+below for full detail.)
+
 2026-09-12 (**Consultations page built** — free, enquiry-only on-site
 energy/water design consultations at `/consultations`, nav reordered
 (Consultations now sits right after Designer, Contact Us moved to the
@@ -96,6 +106,70 @@ errors added across auth forms in both frontends — see below)
 2026-09-03 (Google sign-in on permaculturetools.online now in progress —
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
+
+## Logo updated everywhere, both apps — 2026-09-12
+
+Omar supplied two new logo SVGs (a dark-wordmark version for light
+backgrounds, a white-wordmark version for dark backgrounds) and asked
+for a full rollout, plus asked whether SVG or PNG is the right format
+going forward.
+
+**Answer given**: SVG for anything rendered on a page — scales perfectly,
+tiny file size, crisp on retina — with exactly two exceptions where PNG
+stays necessary: **favicons** (broader OS/browser compatibility at tiny
+sizes) and **email templates** (most email clients render SVG
+unreliably or not at all).
+
+**What changed, `swales-services`** (`public/images/`): `logo.svg`,
+`logo.png`, `logo.jpg` replaced with the new light (dark-text) logo;
+`footer-logo.svg` added and `footer-logo.png` replaced with the new dark
+(white-text) variant; `fab-icon.png` replaced with a cropped icon-only
+mark (sun + water chevrons, no wordmark — extracted from the source SVG
+and verified legible down to 32×32 and 16×16 before shipping). Code
+references switched from `.png` to `.svg` in `Header.jsx` and all five
+auth pages (login/signup/forgot-password/reset-password/verify-email);
+`Footer.jsx` switched to the new `footer-logo.svg`. **Deliberately left
+as PNG**: `CombinedReportContent.jsx`/`ComparisonReportContent.jsx` (the
+PDF report generators) — `html2canvas`, which they rely on, has
+unreliable SVG support, so switching those would risk breaking report
+generation for a purely cosmetic gain.
+
+**What changed, `swales-designer`** (`public/`): same `logo.svg`/
+`logo.png`/`logo.jpg`/`fab-icon.png` replacement. Code references
+switched to `.svg` in `Header.tsx` (also fixed a latent bug: hardcoded
+`width={100} height={100}` assumed a square logo — the real logo is
+~1.5:1, so this would have squished it; corrected to `height={66}`) and
+`MobileHeader.tsx`.
+
+**Real bug caught by visually checking live, not by trusting the initial
+audit**: the initial file/reference inventory (done via a sub-agent
+search) reported `swales-designer`'s login/signup pages as light-background,
+matching `swales-services`' equivalent pages. Live in the browser, they're
+actually **dark-background** — the light (dark-green-text) logo was nearly
+invisible against it. Added a new `public/logo-dark.svg` (the white-text
+variant) specifically for `swales-designer` and switched
+`app/login/page.tsx`/`app/signup/page.tsx` to it; re-verified live,
+now fully legible. Lesson: a static code/CSS audit can miss what a
+background actually renders as — worth a real visual check on anything
+going onto an unfamiliar page, which is exactly what caught this one
+before it shipped. All four Coffee/SignupQuote popups (2 per app) were
+also checked live rather than assumed — all genuinely white-card/light,
+confirmed correct as originally audited.
+
+**`swales-backend`**: `utils/emailService.js`'s `LOGO_URL` was hardcoded
+to `https://garden-desinger.vercel.app/logo.png` — the same typo'd,
+long-stale domain already removed from the CORS allowlist back on
+2026-08-24, just never caught here. Fixed to
+`https://permaculturetools.online/images/logo.png`, which now serves the
+real, current logo once `swales-services` redeploys. Stays PNG
+deliberately (email-client SVG support is unreliable).
+
+**Not replaced, flagged instead**: `swales-designer/public/favicon.ico`
+— confirmed unreferenced in any source file (Next.js's `metadata.icons`
+config points at `fab-icon.png` instead), so browsers never actually
+serve it; left as-is rather than spending effort regenerating a
+multi-resolution `.ico` for an asset nothing points to. Worth a look if
+that ever changes.
 
 ## Specialized Reports page built, priced, and gated — 2026-09-12
 
