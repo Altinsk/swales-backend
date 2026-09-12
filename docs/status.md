@@ -165,6 +165,30 @@ after several attempts; the export *logic* was verified directly instead
 enough that this is considered low-risk, but worth a real click-through
 next time this area is touched.
 
+**Follow-up, same day**: Omar clarified two things. First, "gated" is
+understood to mean nothing functionally different until the business
+bank account + Stripe exist — the enquiry-based model above is accepted
+as the correct interim, not a gap to close urgently. Second: **the
+one-time purchase requires a signed-in account**, same free-for-contact
+tier as report/design downloads and Compare — unlike Consultations,
+which stays fully open with no account needed. Added: `useAuth()`'s
+`user` gates form submission on `/specialized-reports`, reusing
+`ReportAuthGateModal` a fourth time (icon/title/description already
+generalized) with copy specific to this paid purchase. Verified live:
+submitting while signed out correctly shows the gate instead of sending
+the enquiry.
+
+**Real bug caught while verifying this fix, before it ever shipped**:
+`siteDataExport.js` imported `utm` as `import utm from "utm"` (the
+pattern that happened to work in the earlier Node-based verification
+script), but Next.js's bundler doesn't do the same default-export
+interop for this package — `MapComponent.jsx` already correctly uses
+`import { fromLatLon } from "utm"` elsewhere in this exact codebase.
+Webpack surfaced this immediately as an import warning on compile
+(caught by reading the dev server log after reloading, not by guessing);
+fixed to match the codebase's own existing pattern, re-verified the DXF
+export still produces correct output after the fix.
+
 **What "V1" and "V2" actually mean here, since it came up**: this session
 never built two separate shipped versions. "V1" was always the
 recommended *scope* for one single page (GeoJSON+CSV+KML+DXF, no AI) —
