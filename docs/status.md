@@ -97,6 +97,61 @@ errors added across auth forms in both frontends — see below)
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
 
+## "Ask about this site" guided Q&A built — 2026-09-12
+
+Built the guided/rules-based Q&A recommended over an LLM (see the
+Permalogica entry below). `swales-services`:
+
+**`src/services/reportQAService.js`** — pure logic, 5 fixed topics
+(Solar, Wind, Irrigation, Swales & Drainage, Overall Suitability), each
+answered by calling straight into the advisory engines that already
+exist rather than any new synthesis logic: `buildSolarCardData`
+(`solarService.js`), `calculateSuitability`/`calculateReliability`
+(`windCalculationEngine.js`), and `buildRainAdvisory`
+(`rainAdvisorService.js`). "Overall Suitability" combines whichever
+signals are available (solar/wind/swale-suitability scores) into one
+paragraph naming the strongest and weakest. Every topic gracefully
+reports what's missing ("Analyze Wind Potential for this pin first...")
+rather than guessing.
+
+**`src/components/ui/AskAboutSite.jsx`** — a collapsible panel, topic
+pills, self-fetches whatever it needs (solar/wind/soil/precipitation/
+flood-risk) via the existing `getOrFetch` cache the moment it's opened —
+free if the user already visited those tabs this session.
+
+**Wired into `LayerDataPanel.jsx` as layer-agnostic** — unlike RainAdvisor
+(Precipitation tab only), this appears under every map layer's panel,
+since "how suitable is this site overall" isn't specific to one tab.
+Required a small refactor: the switch-statement function was renamed to
+`renderLayerContent`, with a new outer `LayerDataPanel` wrapping it plus
+`<AskAboutSite>`.
+
+**Real bug caught before shipping**: `fetchAllWindData`'s result is keyed
+per category (`home`/`farm`/`business`/`industrial`, one per hub height),
+not a flat object — `WindDashboard.jsx` already does
+`windDataAll?.[selectedCategory]` before reading any field, but the first
+draft here destructured the raw object directly, silently defaulting
+every field to 0 and reporting "0.0 m/s, suitability 0/100" for every
+site regardless of real wind data. Caught by testing live rather than
+trusting the shape from memory — fixed to select `.home` first, matching
+`WindDashboard`'s own pattern; re-verified against the same London pin
+afterward (4.0 m/s, 71/100, 94% reliability — a plausible real reading).
+
+**Verified live in the browser**, all 5 topics, against a real pin:
+Solar and Wind gave real synthesized paragraphs with correct numbers;
+Irrigation correctly showed RainAdvisor's own "not enough soil data"
+message (this London point genuinely has NA water-content data from
+SoilGrids, consistent with RainAdvisor's own behavior at the same pin);
+Swales & Drainage correctly combined the storm-runoff estimate, the WRI
+Aqueduct regional flood category, and the slope-guidance prompt; Overall
+Suitability correctly combined Solar + Wind scores and called out Wind as
+the weaker signal. No new console errors — remaining errors are the same
+pre-existing map-tile rate-limiting noise seen in every prior session.
+
+**Not gated** — same open question as RainAdvisor (no subscription-status
+infra exists yet); final tier placement (free, Core, or exclusive to the
+not-yet-built Specialized Data Package) is still undecided.
+
 ## DXF export spiked and validated — 2026-09-12
 
 Before committing to building the full "Specialized Data Package" page,
