@@ -97,6 +97,47 @@ errors added across auth forms in both frontends — see below)
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
 
+## DXF export spiked and validated — 2026-09-12
+
+Before committing to building the full "Specialized Data Package" page,
+spiked just the CAD-export piece in isolation (scratch project, not wired
+into either app) to confirm a library choice and that the technique
+actually works, per Omar's request.
+
+**Pipeline validated end-to-end**: a synthetic elevation grid (a Gaussian
+hill, 200m×200m at 5m resolution) → `d3-contour` isobands (same
+library/call shape `terrainAnalysis.js` already uses for the real Contour
+Analysis feature) → isoline extraction (a band's polygon ring boundary
+*is* the contour line at that threshold — no new geometry algorithm
+needed) → real lat/lng → UTM metres (the `utm` package, already a
+dependency, already used elsewhere for the Geodata panel) → DXF, one
+layer per elevation level.
+
+**Result**: 10 isobands → 9 contour rings → 9 valid `POLYLINE` DXF
+entities, each correctly tagged with its own layer (`CONTOUR_10m` through
+`CONTOUR_50m`), each vertex carrying real UTM x/y and elevation as z.
+Parsed the output back with an independent library (`dxf-parser`) and
+confirmed all 9 entities and all 10 layers round-tripped correctly —
+strong evidence real CAD software (AutoCAD, QGIS, Civil 3D) would open it
+correctly too, though that hasn't been confirmed with actual CAD software
+since none is available in this environment.
+
+**Library choice: `@tarikjabiri/dxf`** over the older `dxf-writer` —
+more recently maintained (2024 vs. 2023), TypeScript-typed, zero runtime
+dependencies, and its `addPolyline3D`/`addLayer` API mapped directly onto
+what this export needs with no awkward workarounds.
+
+**Confirms the revised effort estimate**: this is genuinely a thin
+serialization layer on top of data `terrainAnalysis.js` already computes
+— the spike (grid generation, contour extraction, projection, DXF
+writing, and round-trip validation) took a single focused pass, not a
+multi-day investigation. Nothing shipped to either app yet — this was a
+throwaway spike in the scratch directory, confirming feasibility before
+building the real export page. Still not started: wiring this into an
+actual `/consultations`-adjacent "Specialized Data Package" page
+alongside GeoJSON/CSV/KML export (see the Permalogica research entry
+below for the full context).
+
 ## Newsletter subscribe endpoint fixed — 2026-09-12
 
 Follow-up to the `/api/contact-us/message` fix below, at Omar's explicit
