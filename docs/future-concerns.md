@@ -265,6 +265,19 @@ deferred** that carry real risk if ignored too long.
     unremarkable average wind and "Moderate" suitability despite real
     tornado risk) — it would only ever be an additional, separate badge.
 
+### Infrastructure (continued)
+
+18. **`POST /api/sub/subscribe-email` is missing from `swales-backend`,
+    same class of bug as the just-fixed `/api/contact-us/message`.** —
+    *Severity: Low.* Found 2026-09-12 while tracing why the Contact Us
+    form 404'd: `server.js` never mounted a `/api/sub` route either, so
+    the Footer's "Subscribe to news" newsletter signup has been silently
+    broken the same way, for the same reason (route never built in this
+    rebuild's backend). Not fixed in this pass — kept out of scope to
+    avoid creep beyond the Consultations enquiry-form work that surfaced
+    it. Fix would follow the identical pattern: a new
+    `subscribeController`/`subscribeRoutes.js` mounted at `/api/sub`.
+
 ### Monetization / access control
 
 17. **RainAdvisor (and every future Core-paid advisory module) ships with

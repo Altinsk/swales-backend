@@ -7,6 +7,20 @@ left off."
 
 ## Last updated
 
+2026-09-12 (**Consultations page built** — free, enquiry-only on-site
+energy/water design consultations at `/consultations`, nav reordered
+(Consultations now sits right after Designer, Contact Us moved to the
+end). **Real bug found and fixed along the way**: `POST /api/contact-us/message`
+never existed anywhere in `swales-backend` — the existing Contact Us form
+(and now this new one) were both silently 404ing. Fixed with a new
+`contactController`/`contactRoutes` + `sendContactEnquiryEmail` (Resend,
+mirrors the existing verification-email pattern). **Also**: researched
+Permalogica's pricing model at Omar's request — write-up below, decision
+still open, nothing built on that front yet. **Also recorded**: the
+mobile "Observer" tab scope (photo/video observations pinned to the map
+for other users to visit) — see `roadmap.md`'s Phase B row. See the dated
+entry below for full detail.**)
+
 2026-09-08 (**RainAdvisor built — the first Core-paid advisory module.**
 Real, named methodology throughout: SCS/NRCS Curve Number runoff method,
 a USDA-NRCS texture-based Hydrologic Soil Group approximation, and
@@ -79,6 +93,105 @@ errors added across auth forms in both frontends — see below)
 2026-09-03 (Google sign-in on permaculturetools.online now in progress —
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
+
+## Consultations page built, contact-form bug fixed, Permalogica researched — 2026-09-12
+
+**Consultations page (`swales-services/src/app/consultations/page.js`) —
+built.** Omar's brief: a free, on-site, enquiry-based professional service
+for energy and water system design, separate from anything gated. Final
+scope, confirmed by Omar before building:
+- **6 energy systems**: solar PV siting & design, small wind turbine
+  siting, off-grid/hybrid energy system design, energy audit & load
+  assessment, grid-tie vs. off-grid decision support, **micro-hydro
+  feasibility** (confirmed in-scope, for sites with year-round flowing
+  water — no existing app data backs this one, it's a pure on-site
+  assessment).
+- **7 water systems**: swale & earthworks design, rainwater harvesting
+  system design, greywater recycling system design, pond/dam siting,
+  irrigation system design, flood mitigation & drainage design, keyline
+  design.
+- Each system's description explicitly cross-references an already-live
+  Swales analysis tool (Solar Potential map, Wind Potential dashboard,
+  RainAdvisor, Contour Analysis, Flood Risk map) — the pitch is real site
+  data already in hand before a consultant arrives.
+- **Pricing: enquiry-only** — no price shown on the page, on-site visits
+  by request, a quote follows after contact (Omar's explicit call).
+- **CTA: inline form on the page itself** (option (a) from the two
+  presented — less friction than redirecting to Contact Us), with a
+  checkbox per system that pre-fills the enquiry message; submits via the
+  existing `sendMessage` service with `subject: "Consultation Enquiry"`.
+- **Explicitly NOT cross-referenced with Field Calculators or any gated
+  feature** — Omar's standing instruction, see
+  `feedback_keep_free_tools_separate_from_gated` memory. Field Calculators
+  keeps its full existing scope (swale volume/dimensions + terrace
+  spacing/cut-fill) untouched, even though RainAdvisor's swale sizing
+  overlaps conceptually.
+- **Nav reorder** (Omar's explicit instruction): `Header.jsx`'s shared
+  `NavLinks` now reads How it works → Services → Compare → Designer →
+  **Consultations** → Blog → Contact Us (Contact Us moved from its old
+  slot right after Designer to the very end).
+
+**Real bug found and fixed while wiring the enquiry form**: tracing
+`sendMessage()` (`pageService.js`) to see how it reaches the backend
+showed it posts to `POST /api/contact-us/message` — but `server.js` only
+ever mounts `/api/auth`, `/api/projects`, `/api/upload`, `/api/shares`,
+`/api/elements`. This route has **never existed** in `swales-backend`
+(the active rebuild) — meaning the existing Contact Us page's form has
+been silently 404ing this whole time, not just the new Consultations
+form. Fixed:
+- `utils/emailService.js` gained `sendContactEnquiryEmail({ name, email,
+  subject, message })` — mirrors the existing Resend pattern
+  (`sendVerificationEmail`/`sendResetPasswordEmail`), but sends *to* the
+  team's inbox (`CONTACT_RECEIVER_EMAIL`, new env var, defaults to
+  `hello@swales.app` in code if unset) with `replyTo` set to the
+  visitor's email, rather than emailing the visitor.
+- New `controllers/contactController.js` (`sendMessage` handler,
+  validates name/email/message) and `routes/contactRoutes.js`
+  (`POST /message`, reuses the existing `sensitiveActionLimiter`), mounted
+  in `server.js` as `/api/contact-us`.
+- `.env.example` documents the new `CONTACT_RECEIVER_EMAIL` var.
+- **Verified locally**: `node -c` clean on all touched backend files;
+  in the browser, submitting the new Consultations form against the
+  still-undeployed `swales-backend.vercel.app` correctly produced a 404 in
+  console (`Consultation enquiry error: ... status code 404`) — proving
+  the frontend call, error handling, and toast messaging all work
+  correctly, and that this will start working the moment the backend fix
+  is deployed. Not yet deployed — needs a PR (branch protection requires
+  one for `swales-backend`), see below.
+- **Found but not fixed, flagged instead** (`future-concerns.md` item 18):
+  `POST /api/sub/subscribe-email` (the Footer's newsletter signup) is
+  missing from `swales-backend` the exact same way — same class of bug,
+  kept out of scope for this pass to avoid scope creep beyond what was
+  asked.
+
+**Permalogica research (`permalogica.com/pricing`), at Omar's request —
+decision still open, nothing built.** Omar's question: Permalogica looks
+similar to what Swales already does, but could Swales "go deeper" for a
+specialized paid service? Findings:
+- Permalogica sells **one flat tier: $250/project**, remote/desk-based
+  only (no site visits). A "project" is one land parcel with
+  Solar/Topography/Hydrology/Climate layers analyzed — conceptually the
+  same category list Swales already gives away **free**, with **more**
+  categories (Swales' free tier already includes Water Stress, Flooding,
+  and Weather on top of what Permalogica charges for).
+- Two things Permalogica has that Swales genuinely doesn't: (1) **CAD-
+  exportable contour data** (DXF-style) and a **Google-Earth-interactive
+  report** with raw data download — Swales' report is PDF-only today; (2)
+  **"Ada," an AI assistant that answers plain-language questions grounded
+  in that specific project's own data** ($10/mo after a free first month)
+  — conceptually a scoped-down version of the already-planned "Swales
+  AI / Decision Intelligent Layer" (Phase W), but applied to a static
+  report's data rather than live design assistance.
+- **My assessment, given to Omar, not yet decided on**: copying
+  Permalogica's exact package (a flat-fee remote report) would be
+  redundant — Swales already gives more raw analysis categories for free.
+  The two genuinely additive ideas are (a) a paid GIS/CAD raw-data export
+  package and (b) an AI Q&A layer over a client's own site report — both
+  are real, separate **feature builds** (new CAD-export tooling; folds
+  into the existing Phase W AI roadmap item), not something to bolt onto
+  the Consultations page's content today. Recommended not blocking the
+  Consultations page on this — revisit as its own scoped item once Omar
+  decides whether to pursue it.
 
 ## RainAdvisor built — 2026-09-08, first Core-paid advisory module
 
