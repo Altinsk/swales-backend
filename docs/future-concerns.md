@@ -282,6 +282,18 @@ deferred** that carry real risk if ignored too long.
 
 ### Monetization / access control
 
+19. **Specialized Data Package ($159 one-time) has no automated payment or
+    delivery — fully manual for now.** — *Severity: Low now, rises with
+    real order volume.* Built 2026-09-12 (`/specialized-reports`): a
+    visitor submits an enquiry, Omar has to manually arrange payment
+    (PayPal) and manually generate + email the export files — nothing in
+    the code actually charges anyone or produces a file automatically on
+    payment. Fine at low volume; becomes a real bottleneck if this starts
+    generating regular orders. The eventual fix (Stripe Checkout webhook
+    → auto-trigger the already-built `siteDataExport.js` functions →
+    email the result) is a clear, scoped follow-up once Stripe exists —
+    not started.
+
 17. **RainAdvisor (and every future Core-paid advisory module) ships with
     no real entitlement gate.** — *Severity: Low now, rising to High once
     Stripe/subscription billing exists.* Built 2026-09-08 as the first of

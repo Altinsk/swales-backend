@@ -97,6 +97,202 @@ errors added across auth forms in both frontends — see below)
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
 
+## Specialized Reports page built, priced, and gated — 2026-09-12
+
+Omar confirmed pricing ($159 one-time) and asked for the real page,
+nav-placed between Consultations and Blog, with v1 exports (GeoJSON,
+CSV, KML, DXF/CAD). Built in `swales-services`:
+
+**Real export generation — `src/utils/siteDataExport.js`**, wired against
+actual analyzed contour data (not the earlier synthetic-hill spike).
+`@tarikjabiri/dxf` and `utm` are now real dependencies (previously only
+installed in the isolated spike project). All four formats share one
+`extractIsolines()` helper (a band's polygon ring boundary = the contour
+line, same technique validated in the spike):
+- **GeoJSON** — LineString per contour, straight passthrough of real data.
+- **CSV** — flat `elevation_m,point_index,lat,lng` table.
+- **KML** — hand-written (no new dependency needed — simple enough as a
+  template string), one `<Placemark>` per contour line, opens in Google
+  Earth.
+- **DXF** — same technique as the spike, now against real data: UTM
+  projection (the `utm` package, already used elsewhere in this app) +
+  one CAD layer per elevation level.
+
+**Verified directly** (not just eyeballed): ran all four exporters
+against a realistic mock contour GeoJSON matching `terrainAnalysis.js`'s
+actual output shape — confirmed valid JSON, correct KML structure (2
+Placemarks for 2 mock bands), and a valid DXF (has an ENTITIES section,
+both expected per-elevation layers present).
+
+**Real data threading required a small, additive state change**:
+`contourAnalysisSummary` only ever stored the summary stats, not the full
+contour GeoJSON geometry needed for export. Added a sibling
+`contourGeoJSON` state in `MapComponent.jsx`, set alongside the existing
+summary in `contourLayer.js`'s `analyzeContoursServerSide` (new
+`setContourGeoJSON` param) and cleared alongside it too. Threaded through
+both `<LayerDataPanel>` render sites → `ContourAnalysisCard`, which now
+also accepts a `contours` prop.
+
+**Pricing & gating — the honest version, given no Stripe exists**:
+Omar asked for this "gated" at $159 one-time. With no payment
+infrastructure at all (not even Core paid's disabled-checkout stage),
+the closest honest equivalent is **enquiry-based, manually fulfilled** —
+the same model Consultations already uses, just with a fixed price shown
+instead of "quote after contact." `ContourAnalysisCard.jsx` shows a
+"🔒 Full Data Export — $159 one-time" teaser (only once a real analysis
+exists) linking to the new page — it does **not** expose working
+download buttons directly, since there's no way to actually collect
+payment before generating the file. The new
+**`/specialized-reports` page** carries the full pitch, format
+breakdown, a mention that the free "Ask about this site" Q&A is already
+included, and a request form (reusing the existing `sendMessage`
+service, subject `"Specialized Data Package Enquiry ($159)"`) — visitor
+submits, Omar follows up to arrange payment (PayPal, already set up for
+the coffee link) and manually generates/emails the export.
+
+**Nav**: `Specialized Reports` added between `Consultations` and `Blog`,
+per Omar's placement instruction.
+
+**Verified live in the browser**: nav order correct; `/specialized-reports`
+renders fully (price, 4 format cards, Q&A callout, working enquiry form);
+`ContourAnalysisCard` renders its normal "draw a rectangle" placeholder
+with no error and no teaser when `contours` is null (the common case).
+**Not verified**: the teaser's actual on-screen appearance after a real
+rectangle-draw-and-analyze in the browser — the map's draw tool proved
+fiddly to drive through this session's browser-automation tooling test
+after several attempts; the export *logic* was verified directly instead
+(see above), and the conditional render (`{contours && (...)}`) is simple
+enough that this is considered low-risk, but worth a real click-through
+next time this area is touched.
+
+**Follow-up, same day**: Omar clarified two things. First, "gated" is
+understood to mean nothing functionally different until the business
+bank account + Stripe exist — the enquiry-based model above is accepted
+as the correct interim, not a gap to close urgently. Second: **the
+one-time purchase requires a signed-in account**, same free-for-contact
+tier as report/design downloads and Compare — unlike Consultations,
+which stays fully open with no account needed. Added: `useAuth()`'s
+`user` gates form submission on `/specialized-reports`, reusing
+`ReportAuthGateModal` a fourth time (icon/title/description already
+generalized) with copy specific to this paid purchase. Verified live:
+submitting while signed out correctly shows the gate instead of sending
+the enquiry.
+
+**Real bug caught while verifying this fix, before it ever shipped**:
+`siteDataExport.js` imported `utm` as `import utm from "utm"` (the
+pattern that happened to work in the earlier Node-based verification
+script), but Next.js's bundler doesn't do the same default-export
+interop for this package — `MapComponent.jsx` already correctly uses
+`import { fromLatLon } from "utm"` elsewhere in this exact codebase.
+Webpack surfaced this immediately as an import warning on compile
+(caught by reading the dev server log after reloading, not by guessing);
+fixed to match the codebase's own existing pattern, re-verified the DXF
+export still produces correct output after the fix.
+
+**What "V1" and "V2" actually mean here, since it came up**: this session
+never built two separate shipped versions. "V1" was always the
+recommended *scope* for one single page (GeoJSON+CSV+KML+DXF, no AI) —
+that's what's built now. "V2" was the *deferred* AI Q&A idea — which
+also got built, but as the free, ungated, guided (non-LLM) "Ask about
+this site" panel instead, not as part of this paid page. There is no
+separate "V2 page."
+
+## "Ask about this site" guided Q&A built — 2026-09-12
+
+Built the guided/rules-based Q&A recommended over an LLM (see the
+Permalogica entry below). `swales-services`:
+
+**`src/services/reportQAService.js`** — pure logic, 5 fixed topics
+(Solar, Wind, Irrigation, Swales & Drainage, Overall Suitability), each
+answered by calling straight into the advisory engines that already
+exist rather than any new synthesis logic: `buildSolarCardData`
+(`solarService.js`), `calculateSuitability`/`calculateReliability`
+(`windCalculationEngine.js`), and `buildRainAdvisory`
+(`rainAdvisorService.js`). "Overall Suitability" combines whichever
+signals are available (solar/wind/swale-suitability scores) into one
+paragraph naming the strongest and weakest. Every topic gracefully
+reports what's missing ("Analyze Wind Potential for this pin first...")
+rather than guessing.
+
+**`src/components/ui/AskAboutSite.jsx`** — a collapsible panel, topic
+pills, self-fetches whatever it needs (solar/wind/soil/precipitation/
+flood-risk) via the existing `getOrFetch` cache the moment it's opened —
+free if the user already visited those tabs this session.
+
+**Wired into `LayerDataPanel.jsx` as layer-agnostic** — unlike RainAdvisor
+(Precipitation tab only), this appears under every map layer's panel,
+since "how suitable is this site overall" isn't specific to one tab.
+Required a small refactor: the switch-statement function was renamed to
+`renderLayerContent`, with a new outer `LayerDataPanel` wrapping it plus
+`<AskAboutSite>`.
+
+**Real bug caught before shipping**: `fetchAllWindData`'s result is keyed
+per category (`home`/`farm`/`business`/`industrial`, one per hub height),
+not a flat object — `WindDashboard.jsx` already does
+`windDataAll?.[selectedCategory]` before reading any field, but the first
+draft here destructured the raw object directly, silently defaulting
+every field to 0 and reporting "0.0 m/s, suitability 0/100" for every
+site regardless of real wind data. Caught by testing live rather than
+trusting the shape from memory — fixed to select `.home` first, matching
+`WindDashboard`'s own pattern; re-verified against the same London pin
+afterward (4.0 m/s, 71/100, 94% reliability — a plausible real reading).
+
+**Verified live in the browser**, all 5 topics, against a real pin:
+Solar and Wind gave real synthesized paragraphs with correct numbers;
+Irrigation correctly showed RainAdvisor's own "not enough soil data"
+message (this London point genuinely has NA water-content data from
+SoilGrids, consistent with RainAdvisor's own behavior at the same pin);
+Swales & Drainage correctly combined the storm-runoff estimate, the WRI
+Aqueduct regional flood category, and the slope-guidance prompt; Overall
+Suitability correctly combined Solar + Wind scores and called out Wind as
+the weaker signal. No new console errors — remaining errors are the same
+pre-existing map-tile rate-limiting noise seen in every prior session.
+
+**Not gated** — same open question as RainAdvisor (no subscription-status
+infra exists yet); final tier placement (free, Core, or exclusive to the
+not-yet-built Specialized Data Package) is still undecided.
+
+## DXF export spiked and validated — 2026-09-12
+
+Before committing to building the full "Specialized Data Package" page,
+spiked just the CAD-export piece in isolation (scratch project, not wired
+into either app) to confirm a library choice and that the technique
+actually works, per Omar's request.
+
+**Pipeline validated end-to-end**: a synthetic elevation grid (a Gaussian
+hill, 200m×200m at 5m resolution) → `d3-contour` isobands (same
+library/call shape `terrainAnalysis.js` already uses for the real Contour
+Analysis feature) → isoline extraction (a band's polygon ring boundary
+*is* the contour line at that threshold — no new geometry algorithm
+needed) → real lat/lng → UTM metres (the `utm` package, already a
+dependency, already used elsewhere for the Geodata panel) → DXF, one
+layer per elevation level.
+
+**Result**: 10 isobands → 9 contour rings → 9 valid `POLYLINE` DXF
+entities, each correctly tagged with its own layer (`CONTOUR_10m` through
+`CONTOUR_50m`), each vertex carrying real UTM x/y and elevation as z.
+Parsed the output back with an independent library (`dxf-parser`) and
+confirmed all 9 entities and all 10 layers round-tripped correctly —
+strong evidence real CAD software (AutoCAD, QGIS, Civil 3D) would open it
+correctly too, though that hasn't been confirmed with actual CAD software
+since none is available in this environment.
+
+**Library choice: `@tarikjabiri/dxf`** over the older `dxf-writer` —
+more recently maintained (2024 vs. 2023), TypeScript-typed, zero runtime
+dependencies, and its `addPolyline3D`/`addLayer` API mapped directly onto
+what this export needs with no awkward workarounds.
+
+**Confirms the revised effort estimate**: this is genuinely a thin
+serialization layer on top of data `terrainAnalysis.js` already computes
+— the spike (grid generation, contour extraction, projection, DXF
+writing, and round-trip validation) took a single focused pass, not a
+multi-day investigation. Nothing shipped to either app yet — this was a
+throwaway spike in the scratch directory, confirming feasibility before
+building the real export page. Still not started: wiring this into an
+actual `/consultations`-adjacent "Specialized Data Package" page
+alongside GeoJSON/CSV/KML export (see the Permalogica research entry
+below for the full context).
+
 ## Newsletter subscribe endpoint fixed — 2026-09-12
 
 Follow-up to the `/api/contact-us/message` fix below, at Omar's explicit
