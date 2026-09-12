@@ -120,6 +120,36 @@ exports.sendVerificationEmail = async (email, token, src = "swales") => {
   }
 };
 
+// Contact Us / Consultation enquiry notification — sent to the team's own
+// inbox, not the visitor. Distinct from the two functions above (which
+// email the *user*): this is the missing counterpart that never existed
+// in this rebuild's backend at all (confirmed 2026-09-12 — server.js only
+// ever mounted /api/auth, /api/projects, /api/upload, /api/shares,
+// /api/elements — swales-services' Contact Us form and the new
+// Consultations enquiry form both call POST /api/contact-us/message,
+// which 404'd against this backend until this endpoint was added).
+exports.sendContactEnquiryEmail = async ({ name, email, subject, message }) => {
+  const receiver = process.env.CONTACT_RECEIVER_EMAIL || "hello@swales.app";
+  const safeMessage = String(message).replace(/\n/g, "<br>");
+  const htmlContent = getEmailTemplate(
+    subject || "New website enquiry",
+    `From: ${name} (${email})<br><br>${safeMessage}`,
+    "Reply via email",
+    `mailto:${email}`
+  );
+
+  const result = await resend.emails.send({
+    from: "no-reply@permaculturetools.online",
+    to: receiver,
+    replyTo: email,
+    subject: `[Swales website] ${subject || "New enquiry"}`,
+    html: htmlContent,
+  });
+  if (result.error) {
+    throw new Error(`Failed to send contact enquiry email: ${result.error.message}`);
+  }
+};
+
 exports.sendResetPasswordEmail = async (email, token, source = "swales") => {
   const url =
     source == "swales"
