@@ -18,8 +18,11 @@ mirrors the existing verification-email pattern). **Also**: researched
 Permalogica's pricing model at Omar's request — write-up below, decision
 still open, nothing built on that front yet. **Also recorded**: the
 mobile "Observer" tab scope (photo/video observations pinned to the map
-for other users to visit) — see `roadmap.md`'s Phase B row. See the dated
-entry below for full detail.**)
+for other users to visit) — see `roadmap.md`'s Phase B row. **Also, same
+day, a follow-up fix**: the newsletter subscribe endpoint
+(`/api/sub/subscribe-email`) had the identical missing-route bug — fixed
+with a real `Subscribers` table (migration + model), not just an inbox
+forward. See the dated entries below for full detail.**)
 
 2026-09-08 (**RainAdvisor built — the first Core-paid advisory module.**
 Real, named methodology throughout: SCS/NRCS Curve Number runoff method,
@@ -93,6 +96,32 @@ errors added across auth forms in both frontends — see below)
 2026-09-03 (Google sign-in on permaculturetools.online now in progress —
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
+
+## Newsletter subscribe endpoint fixed — 2026-09-12
+
+Follow-up to the `/api/contact-us/message` fix below, at Omar's explicit
+request ("I want this fixed too"). `POST /api/sub/subscribe-email` (the
+Footer's "Subscribe to news" button) had the identical missing-route bug
+— never mounted in `server.js`.
+
+Fixed properly rather than just forwarding to an inbox: a real
+`Subscribers` table (`migrations/20260912010000-create-subscribers.js` +
+`models/subscriber.js` — `SubscriberId`, `Email` unique, `SubscribedAt`),
+since a newsletter needs an actual growing list to send to later, not a
+one-off notification. `subscribeController.js`'s `subscribeEmail` uses
+`findOrCreate` so re-subscribing an already-subscribed email succeeds
+silently instead of hitting the unique-constraint error. Mounted at
+`/api/sub` in `server.js`.
+
+**Not run against the Neon dev branch from this environment** — the
+auto-mode classifier blocks `db:migrate` locally (a mutating DB command),
+even against the dev branch. Not worked around — left for the existing
+`neon_workflow.yml` CI check to apply and validate on an isolated branch
+once the PR opens, which is exactly what that workflow exists for. Pushed
+on branch `feature/newsletter-subscribe-endpoint`, PR not yet opened
+(`gh` CLI unavailable in this environment, same recurring limitation as
+prior sessions) — open from
+`https://github.com/Altinsk/swales-backend/pull/new/feature/newsletter-subscribe-endpoint`.
 
 ## Consultations page built, contact-form bug fixed, Permalogica researched — 2026-09-12
 

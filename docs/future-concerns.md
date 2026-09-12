@@ -267,16 +267,18 @@ deferred** that carry real risk if ignored too long.
 
 ### Infrastructure (continued)
 
-18. **`POST /api/sub/subscribe-email` is missing from `swales-backend`,
-    same class of bug as the just-fixed `/api/contact-us/message`.** —
-    *Severity: Low.* Found 2026-09-12 while tracing why the Contact Us
-    form 404'd: `server.js` never mounted a `/api/sub` route either, so
-    the Footer's "Subscribe to news" newsletter signup has been silently
-    broken the same way, for the same reason (route never built in this
-    rebuild's backend). Not fixed in this pass — kept out of scope to
-    avoid creep beyond the Consultations enquiry-form work that surfaced
-    it. Fix would follow the identical pattern: a new
-    `subscribeController`/`subscribeRoutes.js` mounted at `/api/sub`.
+18. ~~**`POST /api/sub/subscribe-email` is missing from `swales-backend`,
+    same class of bug as the just-fixed `/api/contact-us/message`.**~~
+    Done 2026-09-12 — added a real `Subscribers` table (migration +
+    model) rather than just forwarding to an inbox, plus
+    `subscribeController.js`/`subscribeRoutes.js` mounted at `/api/sub`.
+    `findOrCreate` makes re-subscribing an already-subscribed email a
+    silent success, not an error. On branch
+    `feature/newsletter-subscribe-endpoint`, PR not yet merged — the
+    migration hasn't run against the Neon dev branch from this
+    environment (classifier blocks `db:migrate` locally); the
+    `neon_workflow.yml` CI check will apply and validate it on an
+    isolated branch once the PR opens. See `status.md`'s 2026-09-12 entry.
 
 ### Monetization / access control
 
