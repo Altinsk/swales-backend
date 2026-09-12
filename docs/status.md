@@ -7,6 +7,38 @@ left off."
 
 ## Last updated
 
+2026-09-12 (**Consultations page built** — free, enquiry-only on-site
+energy/water design consultations at `/consultations`, nav reordered
+(Consultations now sits right after Designer, Contact Us moved to the
+end). **Real bug found and fixed along the way**: `POST /api/contact-us/message`
+never existed anywhere in `swales-backend` — the existing Contact Us form
+(and now this new one) were both silently 404ing. Fixed with a new
+`contactController`/`contactRoutes` + `sendContactEnquiryEmail` (Resend,
+mirrors the existing verification-email pattern). **Also**: researched
+Permalogica's pricing model at Omar's request — write-up below, decision
+still open, nothing built on that front yet. **Also recorded**: the
+mobile "Observer" tab scope (photo/video observations pinned to the map
+for other users to visit) — see `roadmap.md`'s Phase B row. See the dated
+entry below for full detail.**)
+
+2026-09-08 (**RainAdvisor built — the first Core-paid advisory module.**
+Real, named methodology throughout: SCS/NRCS Curve Number runoff method,
+a USDA-NRCS texture-based Hydrologic Soil Group approximation, and
+standard field-capacity/wilting-point irrigation scheduling — not a token
+feature, per Omar's standing instruction that every advisory module must
+be genuinely significant. Three sections (irrigation timing, near-term
+storm-runoff risk cross-referenced against WRI Aqueduct's regional flood
+category, and an interactive swale/water-harvesting sizing tool with
+catchment area/land-cover/design-storm controls), wired into the
+Precipitation tab below the existing free `PrecipitationCard`. Verified
+live in the browser with hand-checked math (CN=98 roof/25mm storm/100m²
+→ 1.97m³, confirmed exactly; CN=55 mulched-bed/100mm storm/250m² → 3.21m³,
+confirmed). Marked with a "Core" pill but **not hard-gated yet** — no
+Stripe/subscription-status infrastructure exists to gate against, so it's
+visible to everyone for now; a real entitlement check needs wiring before
+public launch (see the code comment at the top of `RainAdvisor.jsx`). See
+the dated entry below for full technical detail.**)
+
 2026-09-08 (**Monetization framework revised again: full report and Compare
 both confirmed free-for-contact (reverting the 2026-08-27 report change);
 Core paid redefined as 3+ site comparison + new paid-only advisory modules
@@ -61,6 +93,200 @@ errors added across auth forms in both frontends — see below)
 2026-09-03 (Google sign-in on permaculturetools.online now in progress —
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
+
+## Consultations page built, contact-form bug fixed, Permalogica researched — 2026-09-12
+
+**Consultations page (`swales-services/src/app/consultations/page.js`) —
+built.** Omar's brief: a free, on-site, enquiry-based professional service
+for energy and water system design, separate from anything gated. Final
+scope, confirmed by Omar before building:
+- **6 energy systems**: solar PV siting & design, small wind turbine
+  siting, off-grid/hybrid energy system design, energy audit & load
+  assessment, grid-tie vs. off-grid decision support, **micro-hydro
+  feasibility** (confirmed in-scope, for sites with year-round flowing
+  water — no existing app data backs this one, it's a pure on-site
+  assessment).
+- **7 water systems**: swale & earthworks design, rainwater harvesting
+  system design, greywater recycling system design, pond/dam siting,
+  irrigation system design, flood mitigation & drainage design, keyline
+  design.
+- Each system's description explicitly cross-references an already-live
+  Swales analysis tool (Solar Potential map, Wind Potential dashboard,
+  RainAdvisor, Contour Analysis, Flood Risk map) — the pitch is real site
+  data already in hand before a consultant arrives.
+- **Pricing: enquiry-only** — no price shown on the page, on-site visits
+  by request, a quote follows after contact (Omar's explicit call).
+- **CTA: inline form on the page itself** (option (a) from the two
+  presented — less friction than redirecting to Contact Us), with a
+  checkbox per system that pre-fills the enquiry message; submits via the
+  existing `sendMessage` service with `subject: "Consultation Enquiry"`.
+- **Explicitly NOT cross-referenced with Field Calculators or any gated
+  feature** — Omar's standing instruction, see
+  `feedback_keep_free_tools_separate_from_gated` memory. Field Calculators
+  keeps its full existing scope (swale volume/dimensions + terrace
+  spacing/cut-fill) untouched, even though RainAdvisor's swale sizing
+  overlaps conceptually.
+- **Nav reorder** (Omar's explicit instruction): `Header.jsx`'s shared
+  `NavLinks` now reads How it works → Services → Compare → Designer →
+  **Consultations** → Blog → Contact Us (Contact Us moved from its old
+  slot right after Designer to the very end).
+
+**Real bug found and fixed while wiring the enquiry form**: tracing
+`sendMessage()` (`pageService.js`) to see how it reaches the backend
+showed it posts to `POST /api/contact-us/message` — but `server.js` only
+ever mounts `/api/auth`, `/api/projects`, `/api/upload`, `/api/shares`,
+`/api/elements`. This route has **never existed** in `swales-backend`
+(the active rebuild) — meaning the existing Contact Us page's form has
+been silently 404ing this whole time, not just the new Consultations
+form. Fixed:
+- `utils/emailService.js` gained `sendContactEnquiryEmail({ name, email,
+  subject, message })` — mirrors the existing Resend pattern
+  (`sendVerificationEmail`/`sendResetPasswordEmail`), but sends *to* the
+  team's inbox (`CONTACT_RECEIVER_EMAIL`, new env var, defaults to
+  `hello@swales.app` in code if unset) with `replyTo` set to the
+  visitor's email, rather than emailing the visitor.
+- New `controllers/contactController.js` (`sendMessage` handler,
+  validates name/email/message) and `routes/contactRoutes.js`
+  (`POST /message`, reuses the existing `sensitiveActionLimiter`), mounted
+  in `server.js` as `/api/contact-us`.
+- `.env.example` documents the new `CONTACT_RECEIVER_EMAIL` var.
+- **Verified locally**: `node -c` clean on all touched backend files;
+  in the browser, submitting the new Consultations form against the
+  still-undeployed `swales-backend.vercel.app` correctly produced a 404 in
+  console (`Consultation enquiry error: ... status code 404`) — proving
+  the frontend call, error handling, and toast messaging all work
+  correctly, and that this will start working the moment the backend fix
+  is deployed. Not yet deployed — needs a PR (branch protection requires
+  one for `swales-backend`), see below.
+- **Found but not fixed, flagged instead** (`future-concerns.md` item 18):
+  `POST /api/sub/subscribe-email` (the Footer's newsletter signup) is
+  missing from `swales-backend` the exact same way — same class of bug,
+  kept out of scope for this pass to avoid scope creep beyond what was
+  asked.
+
+**Permalogica research (`permalogica.com/pricing`), at Omar's request —
+decision still open, nothing built.** Omar's question: Permalogica looks
+similar to what Swales already does, but could Swales "go deeper" for a
+specialized paid service? Findings:
+- Permalogica sells **one flat tier: $250/project**, remote/desk-based
+  only (no site visits). A "project" is one land parcel with
+  Solar/Topography/Hydrology/Climate layers analyzed — conceptually the
+  same category list Swales already gives away **free**, with **more**
+  categories (Swales' free tier already includes Water Stress, Flooding,
+  and Weather on top of what Permalogica charges for).
+- Two things Permalogica has that Swales genuinely doesn't: (1) **CAD-
+  exportable contour data** (DXF-style) and a **Google-Earth-interactive
+  report** with raw data download — Swales' report is PDF-only today; (2)
+  **"Ada," an AI assistant that answers plain-language questions grounded
+  in that specific project's own data** ($10/mo after a free first month)
+  — conceptually a scoped-down version of the already-planned "Swales
+  AI / Decision Intelligent Layer" (Phase W), but applied to a static
+  report's data rather than live design assistance.
+- **My assessment, given to Omar, not yet decided on**: copying
+  Permalogica's exact package (a flat-fee remote report) would be
+  redundant — Swales already gives more raw analysis categories for free.
+  The two genuinely additive ideas are (a) a paid GIS/CAD raw-data export
+  package and (b) an AI Q&A layer over a client's own site report — both
+  are real, separate **feature builds** (new CAD-export tooling; folds
+  into the existing Phase W AI roadmap item), not something to bolt onto
+  the Consultations page's content today. Recommended not blocking the
+  Consultations page on this — revisit as its own scoped item once Omar
+  decides whether to pursue it.
+
+## RainAdvisor built — 2026-09-08, first Core-paid advisory module
+
+Omar's standing instruction when starting this: every advisory feature
+(RainAdvisor first, then the soil health score and crop suitability engine
+still to come) must be a genuinely significant, "top class" advisor, not a
+minimal/stub implementation — since these are now the actual paid product
+(see the monetization entry above). Built accordingly, in
+`swales-services`:
+
+**`src/services/rainAdvisorService.js`** — pure logic, no React/network,
+mirroring the existing `smartClimateAdvisor.js`/`smartSolarAdvisor.js`
+pattern. Three real, named methodologies, not arbitrary heuristics:
+- **Runoff**: the SCS/NRCS Curve Number method (USDA NEH Part 630 Ch. 10;
+  curve numbers from the published TR-55 tables) — `Q = (P−0.2S)²/(P+0.8S)`,
+  `S = 25400/CN − 254`. Four land-cover presets (mulched bed, pasture,
+  bare soil, roof/paved — the last flat at CN=98 regardless of soil, since
+  impervious surfaces don't infiltrate).
+- **Hydrologic Soil Group**: approximated from SoilGrids' clay/sand
+  percentages per the same "texture shortcut when no full soil survey
+  exists" approach published in NRCS extension engineering guides —
+  documented in-code as an approximation, same caveat style
+  `terrainAnalysis.js` already uses for its own slope thresholds.
+- **Irrigation timing**: standard field-capacity/wilting-point Available
+  Water Capacity (from SoilGrids' `waterContent33kPa`/`waterContent1500kPa`,
+  already fetched by the existing Soil tab) against the 3-day rainfall
+  forecast, with the "50% Management Allowed Depletion" rule of thumb for
+  when to actually irrigate — a real irrigation-scheduling convention, not
+  an invented threshold.
+- **Swale/water-harvesting sizing**: runoff volume (from the same CN
+  method, for a user-chosen design storm 10-100mm and catchment area) run
+  through two trapezoidal swale cross-section presets to give a concrete
+  "dig this many metres" answer, plus slope guidance that reuses
+  `terrainAnalysis.js`'s existing 2-15% swale-suitability band when a
+  Contour Analysis has already been run for the site (falls back to a
+  generic prompt otherwise).
+
+**`src/components/ui/RainAdvisor.jsx`** — presentation, mirroring
+`SmartSolarAdvisor.jsx`'s visual conventions exactly (BlockHeader,
+tooltips, verdict banners). Self-fetches soil + flood-risk data via the
+existing `getOrFetch` cache (instant if the user already visited those
+tabs this session, one real fetch otherwise) — reasoned as an extension of
+the Precipitation tab's own existing Analyze-gate (the user already opted
+into analysis to reach this tab) rather than a new silent auto-fetch.
+Interactive controls (catchment area, land cover, design storm, root
+depth) recompute live via `useMemo`. Carries a small "Core" pill but is
+**not hard-gated** — no Stripe/subscription-status column exists yet to
+gate against (see the monetization entry above), so it's fully functional
+for everyone until that infrastructure exists; a code comment at the top
+flags this explicitly so it isn't forgotten before public launch.
+
+**Wired into `LayerDataPanel.jsx`**, below the existing free
+`PrecipitationCard` on the Precipitation tab — matching `roadmap.md`'s own
+note to "layer in after precipitation_card ships, the same way
+SmartSolarAdvisor was bolted onto the sun tracker."
+
+**Real bug found and fixed while wiring this in**: `LayerDataPanel` was
+receiving `sunLat`/`sunLon` as its only lat/lng props, but those are only
+ever updated inside a `useEffect` gated on `mapLayers.sunTrackerLayer` —
+they silently stay `null` on every other layer, including Precipitation.
+RainAdvisor's own soil/flood-risk fetch never fired because of this (the
+component sat stuck on its loading skeleton indefinitely — a second bug,
+now also fixed: the effect's early-return guard didn't clear `loading`).
+Fixed at the source instead of special-casing RainAdvisor: `MapComponent.jsx`
+already tracks a layer-agnostic current-pin position in
+`currentLocationName.latitude`/`.longitude` (used for the Geodata panel),
+so both `<LayerDataPanel>` call sites (desktop + mobile) now also pass
+`pinLat`/`pinLng` from that same state — available to any future
+layer-agnostic feature, not just this one.
+
+**Verified live in the browser** (`swales-services` dev server,
+`/water-precipitation-map`): confirmed `/api/proxy/soil/*` and
+`/api/proxy/flood-risk` fire exactly once each per pin (cache-shared with
+the Soil/Flooding tabs, confirmed via `read_network_requests`); hand-
+verified the runoff math against the displayed numbers twice — CN=98
+(roof), 25mm design storm, 100m² catchment → 1.97m³ (calculated
+independently as 19.69mm × 100m² = 1.97m³, exact match) and CN=55
+(mulched bed), 100mm storm, 250m² → 3.21m³ (calculated independently as
+12.83mm × 250m² = 3.21m³, exact match); confirmed both swale-profile
+lengths (14.6m small / 3.1m large) against the trapezoidal cross-section
+formula by hand; confirmed live recompute on changing every control
+(catchment number input, land-cover/design-storm/root-depth selects); this
+specific London point had `NA` soil water-content data from SoilGrids, so
+the Irrigation section's honest "not enough data" fallback path was also
+exercised for real, not just assumed to work. No RainAdvisor-related
+console errors — remaining console errors were pre-existing, unrelated
+map-tile rate-limiting (429s against the shared dev OpenWeatherMap/Mapbox
+keys) already present before this session's changes.
+
+**Not yet done**: soil health score and crop suitability engine (the
+other two Core-paid modules, still not started); the real subscription
+gate (tracked as `future-concerns.md` item 17 — must be closed before
+this goes live as an actual paid feature); mobile-viewport visual check
+specifically (same code path as desktop, not re-verified in a narrow
+viewport this session).
 
 ## Monetization framework — revised 2026-09-08: report & Compare confirmed free-for-contact, Core paid redefined
 
