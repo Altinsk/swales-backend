@@ -7,6 +7,39 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**Field Calculators: hub page + first 4 calculators shipped**
+— built and pushed to `swales-services` `main` (`111ddcb`) the same session
+the scope was decided (see the entry directly below for the full category
+list/tier plan). **Nav resolved as a single link**: "Field Calculators" ->
+`/field-calculators`, same pattern as "Blog" — individual calculators are
+never in the nav, only reachable via the hub page or search, so the menu
+never grows no matter how many calculators eventually exist (Omar's
+concern, raised mid-build). **Hub page layout**: one visual block per
+category (Omar's explicit call, matching the Consultations page's Energy
+Systems/Water Systems sections) rather than a filter+grid — plain server
+component, no client JS needed, better for crawlability. **4 calculators
+live**, each independently hand-verified against the displayed output
+before shipping (same discipline as RainAdvisor's launch): Swale Volume &
+Dimensions (0.3m depth x 0.45m avg width x 10m length = 1.35m³, confirmed
+exact), Mulch Calculator (10m² x 5cm = 0.5m³ = 0.65yd³ = 9 standard bags,
+confirmed exact), Solar PV Array Size (10kWh / (4.5h x 0.8) = 2.78kW,
+confirmed exact), Micro-Hydro Power (1000 x 9.81 x 0.05 x 10 x 0.7 / 1000 =
+3.43kW, confirmed exact). Each calculator's pure math lives in its own
+`src/lib/calculators/*.js` module, independent of `rainAdvisorService.js`
+even where the formula overlaps (swale volume), per
+`feedback_keep_free_tools_separate_from_gated`. **SEO/GEO**: `generateMetadata`
++ `SoftwareApplication` JSON-LD per calculator page, `CollectionPage`/
+`ItemList` JSON-LD on the hub — same structured-data pattern already
+proven on `/blog/[slug]`'s `BlogPostingSchema`. Registry-driven
+(`src/lib/calculators/registry.js`) — the hub, sitemap, and future
+calculators all read one source of truth; the 22 not-yet-built calculators
+(Terrace Spacing, Rainwater Tank Sizing, and everything in Tiers 2-4) show
+on the hub as "Coming soon" so the full scope is visible even before
+they're built. Verified live in the browser: all 4 calculators' math,
+mobile layout, sitemap.xml entries, and JSON-LD output. **Not yet done**:
+the remaining 2 Tier-1 calculators (Terrace Spacing, Rainwater Tank
+Sizing) and everything in Tiers 2-4.)
+
 2026-09-13 (**Field Calculators scoped and build started** — folded Energy
 Calculators (previously its own roadmap row) plus three net-new categories
 (Vertical Farming, Microgreens, Aquaculture/Aquaponics) into one Field
