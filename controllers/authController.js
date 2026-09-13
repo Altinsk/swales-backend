@@ -18,9 +18,11 @@ const {
   sessionCookieOptions,
 } = require("../utils/tokenService");
 const { Op } = require("sequelize");
+const normalizeEmail = require("../utils/normalizeEmail");
 
 exports.register = async (req, res) => {
-  const { firstName, lastName, email, password, dateOfBirth, src } = req.body;
+  const { firstName, lastName, password, dateOfBirth, src } = req.body;
+  const email = normalizeEmail(req.body.email);
   const checkUserEmailSimple = await User.findOne({
     where: { [Op.and]: [{ Email: email }, { loginType: "google" }] },
   });
@@ -59,7 +61,8 @@ exports.register = async (req, res) => {
 
 exports.resendVerification = async (req, res) => {
   try {
-    const { email, src } = req.body;
+    const { src } = req.body;
+    const email = normalizeEmail(req.body.email);
     const user = await User.findOne({ where: { Email: email } });
     // Same response whether the account doesn't exist, is already verified,
     // or a new link was actually sent - mirrors forgotPassword's
@@ -126,7 +129,8 @@ exports.verifyEmail = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password, rememberMe } = req.body;
+  const { password, rememberMe } = req.body;
+  const email = normalizeEmail(req.body.email);
   const checkUserEmailSimple = await User.findOne({
     where: { [Op.and]: [{ Email: email }, { loginType: "google" }] },
   });
@@ -179,7 +183,8 @@ exports.logout = async (req, res) => {
 
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email, source } = req.body;
+    const { source } = req.body;
+    const email = normalizeEmail(req.body.email);
     const user = await User.findOne({ where: { Email: email } });
     // Same response whether or not the account exists - a distinguishable
     // "User not found" here lets anyone enumerate every registered email.

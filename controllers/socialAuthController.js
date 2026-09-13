@@ -4,6 +4,7 @@ const { User } = require("../models");
 const { generateToken, sessionCookieOptions } = require("../utils/tokenService");
 const { Op } = require("sequelize");
 const { OAuth2Client } = require("google-auth-library");
+const normalizeEmail = require("../utils/normalizeEmail");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -34,7 +35,11 @@ exports.GoogleSignIn = async (req, res) => {
       return errorResponse(res, "Google email is not verified", null, 401);
     }
 
-    const email = payload.email;
+    // Without normalizing, a native account registered as "Test@x.com"
+    // wouldn't match Google's "test@x.com" here - findOne below would miss
+    // it and create a second, duplicate account instead of signing the
+    // user into their existing one.
+    const email = normalizeEmail(payload.email);
     const firstName = payload.given_name || payload.name || "";
 
     let targetUser = null;
