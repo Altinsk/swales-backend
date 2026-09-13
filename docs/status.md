@@ -7,6 +7,20 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**`swales-services` nav: Consultations + Specialized Reports
+merged under one "Professional Services" dropdown** — both are
+enquiry-based/human-fulfilled offerings, distinct from the existing
+"Services" nav item which covers the free automated map tools. Desktop
+gets a click-toggle dropdown (`ProfessionalServicesDropdown`), mobile
+gets an accordion (`ProfessionalServicesAccordion`) — both in
+`Header.jsx`, sharing one `PROFESSIONAL_SERVICES_LINKS` list. Verified
+live: desktop dropdown opens/closes and both links navigate correctly;
+mobile accordion expands and shows both nested links. **Also**: Omar
+flagged that social media profile/cover images (Facebook, Instagram, X,
+LinkedIn, YouTube, Discord) still carry the old logo from the 2026-09-12
+rollout below — logged as `future-concerns.md` item 21, needs manual
+per-platform updates outside this codebase.)
+
 2026-09-12 (**Logo updated everywhere across both frontend apps** — new
 light/dark SVG variants, favicons regenerated from a cropped icon-only
 mark, PDF report generators deliberately left on PNG (`html2canvas`

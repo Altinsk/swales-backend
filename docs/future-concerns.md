@@ -290,6 +290,17 @@ deferred** that carry real risk if ignored too long.
     regenerating a multi-resolution `.ico` for a dead file. Worth
     revisiting only if something starts referencing it directly.
 
+### Marketing / brand assets
+
+21. **Social media profile/cover images still carry the old logo.** —
+    *Severity: Low.* Follow-up to the 2026-09-12 logo rollout (`status.md`)
+    which covered both frontend apps (`swales-services`, `swales-designer`)
+    plus the backend's email template — external platforms (e.g. Facebook,
+    Instagram, X/Twitter, LinkedIn, YouTube, Discord) are outside this
+    codebase and weren't touched. Needs Omar to manually update each
+    platform's profile/cover image with the new logo — not something a code
+    change can fix. Flagged 2026-09-13 at Omar's request.
+
 ### Monetization / access control
 
 19. **Specialized Data Package ($159 one-time) has no automated payment or
