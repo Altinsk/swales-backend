@@ -7,6 +7,26 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**`swales-services` nav restructured to 5 fixed top-level
+slots** (`111ddcb`..`68417ac`) — the header was growing by one link per
+feature category (Services, Compare, Designer, Field Calculators all
+separate) with 22 more calculators still to come and no room left.
+Omar's call: How it works / **Tools** / Professional Services / **Resources**
+/ Contact Us, and it never grows past 5 again — every addition goes inside
+an existing dropdown's item list. **Tools** = Map Analysis (was
+"Services") + Compare Sites + **Calculators** (was "Field Calculators",
+Omar's explicit rename — URL unchanged, still `/field-calculators`) +
+Design Canvas (was "Designer"). **Resources** = Blog now, ready to absorb
+the Soil Types/Climate Zones reference pages already on the Phase D
+roadmap without another nav change. Extracted the bespoke
+`ProfessionalServicesDropdown`/`Accordion` (built earlier this session)
+into generic `NavDropdown`/`NavAccordion` components so all three
+dropdowns share one implementation. Verified live (dropdown open state,
+mobile accordion expand, correct hrefs) and a full `npm run build` clean
+before pushing this time, after the build broke on unescaped-JSX-entity
+lint errors the first time Field Calculators shipped — see the entry
+below for that fix.)
+
 2026-09-13 (**Field Calculators: hub page + first 4 calculators shipped**
 — built and pushed to `swales-services` `main` (`111ddcb`) the same session
 the scope was decided (see the entry directly below for the full category
