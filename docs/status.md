@@ -7,6 +7,29 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**Field Calculators: all 6 Tier 1 calculators now live**
+(`64f56dd`) — completed the last two, Terrace Spacing and Rainwater Tank
+Sizing. **Terrace Spacing** deliberately did not use the classic cropland
+"Ramser's formula" terrace-spacing equations found via `WebSearch`/
+`WebFetch` research — their region/soil-specific constants vary by source
+and couldn't be confidently verified against a primary reference (several
+PDF sources failed to fetch cleanly). Used the deterministic bench-terrace
+geometric relationship instead: VI = (S &times; Wb) / (100 &minus; S
+&times; U), derived from first principles (natural ground's drop over one
+bench+riser span must equal VI) and verified numerically before writing
+any code (S=30%, Wb=2m, U=0.5 -> VI=0.706m, reproduces exactly). **Rainwater
+Tank Sizing** uses the standard, well-established harvesting-yield formula
+(volume = area x rainfall x runoff coefficient, exact by unit identity).
+Both hand-verified against live browser output before shipping: Terrace
+(30%/2m/earth riser defaults) -> VI=0.71m, cycle width=2.35m, 15 terraces
+for a 10m slope, all exact; Rainwater Tank (50m²/25mm/metal roof defaults)
+-> 1125L, exact. Hub page's Earthworks & Permaculture section now shows
+zero "Coming soon" badges. Full production build run and clean before
+pushing this time (see the nav-restructure entry below for why that
+matters now). **Field Calculators Tier 1 is fully complete** — next up is
+Tier 2 (battery/inverter sizing, wind turbine output, compost ratio,
+pond/dam sizing, amendment dosing, ROI/payback) whenever picked back up.)
+
 2026-09-13 (**`swales-services` nav restructured to 5 fixed top-level
 slots** (`111ddcb`..`68417ac`) — the header was growing by one link per
 feature category (Services, Compare, Designer, Field Calculators all
