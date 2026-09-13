@@ -7,6 +7,62 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**Crop Suitability Engine built — and a real correction to
+the monetization roadmap found first.** Asked to build "the other two
+Core-paid advisory modules" (soil health score + crop suitability
+engine, RainAdvisor having been module 1). Before writing any code,
+checked the actual codebase rather than trusting the roadmap's
+"Should — not started" status for both — same discipline as the
+2026-09-03 correction session. **Soil health score turned out to
+already exist**: `SoilCard.jsx`'s hero display (lines ~83-95) already
+computes a real weighted 0-100 composite score (pH 25%, bulk density
+20%, organic carbon density 20%, nitrogen 15%, CEC 20%, each via
+severity-banded sub-scores) with a Critical→Excellent level badge and a
+full explanatory tooltip — live on the free Soil map layer today, never
+gated. Flagged this to Omar before building anything, since duplicating
+it would have been wasted work. Confirmed: only **crop suitability
+engine** was genuinely missing (the only trace anywhere was
+`pricing/page.js` still listing "Planned: soil health score & crop
+suitability engine" as one stale Core-paid bullet).
+
+**Built `cropSuitabilityService.js`** (pure logic, no React/network):
+ranks 5 broad crop categories — wheat, maize, legumes, vegetables, fruit
+trees — against a site's soil pH, drainage, and climate zone. Real reuse
+over reinvention: drainage uses `rainAdvisorService.js`'s
+`estimateHydrologicSoilGroup` directly (no duplicate texture-to-HSG
+logic), climate zone uses `smartClimateAdvisor.js`'s existing
+classification. Each factor scored 0-100 and combined climate 40% / pH
+35% / drainage 25% — climate weighted highest since it's the least
+amendable of the three (pH and drainage can both be actively managed;
+climate can't). pH optimal ranges and climate-zone fit per crop category
+sourced from general agronomy consensus (wheat 6.0-7.5 tolerating
+heavier clay-loam soil, maize 5.8-7.0 but genuinely waterlogging-
+sensitive, legumes/vegetables/fruit trees each with their own real
+tolerance profile) — documented inline with the same citation discipline
+as `rainAdvisorService.js`.
+
+**`CropSuitabilityEngine.jsx`** wired into `LayerDataPanel.jsx`'s
+`soilLayer` case, directly below `SoilCard` — same "Core" pill, same
+not-yet-hard-gated situation as RainAdvisor (no Stripe to gate against).
+Expandable rows show the specific reasons (climate/pH/drainage) behind
+each crop's score.
+
+**Verified live against real data** (Iowa, 41.878/-93.097 — genuinely
+came back as Phaeozems, the correct real-world WRB classification for
+Iowa prairie soil, a good sanity check the underlying pipeline is
+sound): pH 6.3, 40.8% clay → HSG D, Temperate climate zone. All 5
+scores hand-calculated independently and matched the live UI exactly —
+Wheat 89, Vegetables 86, Legumes 85, Fruit Trees 82, Maize 80 — including
+correctly identifying drainage as maize's specific limiting factor when
+expanded. Full production build clean.
+
+**Also fixed**: `pricing/page.js` was advertising the already-free soil
+health score as a Core-paid incentive. Corrected — dropped "Planned:"
+from RainAdvisor's line (it's built, just not hard-gated), removed "soil
+health score" entirely from Core's list, kept only "Planned: crop
+suitability engine" as the one item still genuinely upcoming.
+`swales-services` `7f288c2`.)
+
 2026-09-13 (**`roadmap_backlog.xlsx` updated to match Field Calculators'
 completed status** (`6401bbe`) — Backlog sheet rows 65 (Field
 Calculators) and 64 (Energy Calculators, folded into 65) marked Done,
