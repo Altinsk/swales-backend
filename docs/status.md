@@ -7,6 +7,43 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**Field Calculators: SEO/GEO article pattern added + all 7
+Tier 2 calculators shipped — 13 of 26 now live** (`ec0b476`, `940cb69`).
+Omar's ask: every calculator page needs a real article underneath it
+targeting SEO/GEO keywords, not just the tool itself. Built
+`CalculatorArticle.jsx` (explanatory sections + a direct-Q&A FAQ list —
+the FAQ format specifically chosen because both Google's FAQPage rich
+results and AI answer engines parse clean Q&A pairs well) and
+`FAQSchema.jsx` (FAQPage JSON-LD), wired into `CalculatorPageShell` via a
+new `article` prop. Retrofitted real articles (3 sections + 4 FAQs each,
+not filler) onto all 6 existing Tier 1 calculators, then built all 7 Tier
+2 calculators with the pattern from the start:
+- **Compost C:N Ratio** — mass-weighted average of preset C:N ratios,
+  explicitly documented as a simplified approximation (not Cornell Waste
+  Management Institute's precise %C/%N/%moisture method, which needs
+  lab-tested per-material values this session couldn't source reliably).
+  Researched via `WebSearch`/`WebFetch` against Cornell's own published
+  composting reference before picking representative preset ratios.
+- **Pond & Dam Volume** — exact frustum (truncated pyramid) geometry
+  rather than a rough correction-factor shortcut; verified it correctly
+  degenerates to a plain pyramid volume when a steep bank slope shrinks
+  the bottom to zero.
+- **Soil Amendment Rate** — pure area-unit conversion; deliberately does
+  not invent an application rate, only converts the one the user already
+  has from a soil test or product label.
+- **Battery Bank / Inverter / Wind Output / ROI-Payback** — standard,
+  textbook off-grid and renewable-energy formulas, no research needed.
+
+All 7 hand-verified against live browser output before shipping (compost
+48.75:1, pond 129.7m³, amendment 2.5kg, battery 312Ah, inverter 1800W,
+wind 10950kWh/yr, payback 8.9yrs — every one an exact match to an
+independent calculation). Full production build run clean before each
+push. **Tier 2 complete.** Next: Tier 3 (needs published per-crop/species
+reference tables — seed rates, DLI targets, nutrient dosing, microgreens
+seed density, aquaculture stocking density/ratios — more research-heavy
+than Tier 1-2, will need the same `WebSearch`/`WebFetch` sourcing
+discipline used for compost ratios above) and Tier 4.)
+
 2026-09-13 (**Field Calculators: all 6 Tier 1 calculators now live**
 (`64f56dd`) — completed the last two, Terrace Spacing and Rainwater Tank
 Sizing. **Terrace Spacing** deliberately did not use the classic cropland
