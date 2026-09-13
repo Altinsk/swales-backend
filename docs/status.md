@@ -7,6 +7,31 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**Blog detail page fixes: `swales-services` `0013d3f` —
+3 small requests turned up one real root-cause bug.** Omar reported
+"Related reading" links not working on `/blog/[slug]`, "Back to Blog"
+not matching the calculators' green back-link color, and the
+calculators hub needing "All Field Calculators" above the calculator
+list. The links themselves were never actually broken (verified: every
+`getRelatedPosts()` slug always resolves to a real post, tested render
++ click across all 242 posts programmatically) — the real bug was that
+`blog.css` (all `.blog-content` article typography, including in-article
+link styling) is only imported on `/blog` (the list page), never on
+`/blog/[slug]` itself, confirmed by diffing the actual Next.js CSS
+bundle served per route. With Tailwind's preflight reset stripping
+default `<a>` styling, every in-article and related-post link rendered
+with zero visual affordance — present and clickable, but indistinguishable
+from plain text, which reads as "doesn't work" to a real user. Fixed by
+importing `blog.css` in `[slug]/page.js`; also moved the related-posts
+grid from inline styles (couldn't respond to a media query — 3 columns
+crushed to ~120px cards on mobile) to real CSS classes with a
+mobile-stack breakpoint and hover affordance. Also: "Back to Blog" link
+color `#191A23` → `#16a34a` (matches `CalculatorPageShell`'s "All Field
+Calculators" link), and the calculators hub `<h1>` "Field Calculators" →
+"All Field Calculators". Verified live: CSS bundle now includes
+`.blog-content`/`.related-reading-*`, related-post click navigates
+end-to-end, mobile grid stacks to 1 column.)
+
 2026-09-12 (**Consultations page built** — free, enquiry-only on-site
 energy/water design consultations at `/consultations`, nav reordered
 (Consultations now sits right after Designer, Contact Us moved to the
