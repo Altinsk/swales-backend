@@ -7,6 +7,24 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**`swales-services`: ~5-day-old uncommitted blog work found and
+shipped** — found, not authored this session: ~53 new `content/blog/*.md`
+posts with matching hero/thumb images (last touched 2026-09-08, never
+committed), plus `src/lib/blog-clusters.js` (new) and edits to `blog.js`/
+`app/blog/[slug]/page.js` sitting uncommitted alongside them. No record of
+this work exists anywhere (checked memory, this file, `future-concerns.md`)
+— flagged to Omar, who asked to commit and push it as-is rather than
+inspect first. What it does: `getRelatedPosts()` now
+prefers same-topic-cluster posts over the broad `category` field (which
+groups 100+ posts under one label like "Permaculture"); post markdown's
+`###` section headings are promoted to `<h2>` at render time (posts never
+use `##`, so `<h1>` title → `<h3>` sections skipped a heading level, an
+SEO-flagged gap — fixed centrally instead of editing 240+ files); two
+existing posts (`aquaculture-meaning`, `fly-fruit-trap`) had a broken
+title/excerpt (literal `"...html"` title, `"undefined"` excerpt) from a bad
+import, now fixed. Committed and pushed directly to `main` (`b070d91`) —
+same no-PR-required precedent as the nav change below.)
+
 2026-09-13 (**`swales-services` nav: Consultations + Specialized Reports
 merged under one "Professional Services" dropdown** — both are
 enquiry-based/human-fulfilled offerings, distinct from the existing
