@@ -132,14 +132,31 @@ exports.sendVerificationEmail = async (email, token, src = "swales") => {
 // /api/elements — swales-services' Contact Us form and the new
 // Consultations enquiry form both call POST /api/contact-us/message,
 // which 404'd against this backend until this endpoint was added).
+// Escapes the 5 characters that matter for HTML text-node/attribute context.
+// Needed because `name`/`subject`/`message` below are visitor-controlled and
+// go straight into an HTML email template - without this, a contact-form
+// submission containing HTML tags renders as live markup (up to and
+// including a <script>, depending on the recipient's mail client) in the
+// email your own team opens.
+const escapeHtml = (str) =>
+  String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 exports.sendContactEnquiryEmail = async ({ name, email, subject, message }) => {
   const receiver = process.env.CONTACT_RECEIVER_EMAIL || "hello@swales.app";
-  const safeMessage = String(message).replace(/\n/g, "<br>");
+  const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
   const htmlContent = getEmailTemplate(
-    subject || "New website enquiry",
-    `From: ${name} (${email})<br><br>${safeMessage}`,
+    escapeHtml(subject) || "New website enquiry",
+    `From: ${escapeHtml(name)} (${escapeHtml(email)})<br><br>${safeMessage}`,
     "Reply via email",
-    `mailto:${email}`
+    // buttonUrl is dropped into an href="..." attribute (and repeated as link
+    // text) by getEmailTemplate, so it needs HTML-escaping too - a raw `"` in
+    // `email` would otherwise close the attribute early.
+    `mailto:${escapeHtml(email)}`
   );
 
   const result = await resend.emails.send({
