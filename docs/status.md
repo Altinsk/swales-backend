@@ -7,6 +7,17 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**Permalogica specialized-tier question decided: no LLM build for
+now.** Follow-up to the 2026-09-12 Permalogica research entry below, which
+left one genuine open question after the CAD-export gap was already closed
+by Specialized Reports: whether to also build a paid, LLM-backed "Ada"-
+equivalent site-specific Q&A layer (vs. the free rules-based "Ask about this
+site" panel already shipped). **Omar's call: not now** — explicitly kept as
+a future option, not dropped from the roadmap, folds back into Phase W's
+"Swales AI / Decision Intelligent Layer" whenever that gets picked up. No
+code changes; `roadmap.md`'s Consultations row note updated to reflect the
+decision instead of "not yet decided.")
+
 2026-09-13 (**Blog detail page fixes: `swales-services` `0013d3f` —
 3 small requests turned up one real root-cause bug.** Omar reported
 "Related reading" links not working on `/blog/[slug]`, "Back to Blog"
