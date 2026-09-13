@@ -280,6 +280,75 @@ deferred** that carry real risk if ignored too long.
     `neon_workflow.yml` CI check will apply and validate it on an
     isolated branch once the PR opens. See `status.md`'s 2026-09-12 entry.
 
+### Technical debt / cleanup (continued)
+
+20. **`swales-designer/public/favicon.ico` is stale (old logo) and
+    unreferenced.** — *Severity: Low.* Found 2026-09-12 during the logo
+    rollout: Next.js's `metadata.icons` config points at `fab-icon.png`
+    (already updated to the new logo), so `favicon.ico` is never actually
+    served by this app — browsers won't pick it up. Left as-is rather than
+    regenerating a multi-resolution `.ico` for a dead file. Worth
+    revisiting only if something starts referencing it directly.
+
+### Marketing / brand assets
+
+21. **Social media profile/cover images still carry the old logo.** —
+    *Severity: Low.* Follow-up to the 2026-09-12 logo rollout (`status.md`)
+    which covered both frontend apps (`swales-services`, `swales-designer`)
+    plus the backend's email template — external platforms (e.g. Facebook,
+    Instagram, X/Twitter, LinkedIn, YouTube, Discord) are outside this
+    codebase and weren't touched. Needs Omar to manually update each
+    platform's profile/cover image with the new logo — not something a code
+    change can fix. Flagged 2026-09-13 at Omar's request.
+
+### Content
+
+22. **Finish the remaining blog posts (up to +80), then republish.** —
+    *Severity: Low.* Omar's own content task, not a code fix — flagged
+    2026-09-13 after the ~53-post batch found uncommitted and shipped the
+    same day (see `status.md`'s 2026-09-13 entry). `content/blog/` current
+    total is 242 posts (243 minus the one pulled below). Which specific
+    subset counts as the "+80" still needing finishing wasn't specified
+    here — Omar tracks that himself. Once the remaining posts are done,
+    they need the same treatment as the last batch: commit + push to
+    `swales-services` `main` (no PR required for this repo) to actually go
+    live.
+
+    **Already checked and fixed, 2026-09-13 — skip these two when doing
+    the +80 pass, they're done:**
+    - **`avoid-these-bad-companion-plants-for-pumpkins.md`** — the
+      "Recommended Seed Suppliers" section had 5 literal unfilled
+      `[Insert your own talking point]` placeholder bullets, live on the
+      site. Replaced with real (non-branded — no specific supplier names
+      invented) guidance on what to look for in a seed supplier. Also
+      fixed a second issue in the same post: a "Can Bad Companion Plants
+      Affect the Taste of Pumpkins?" section that teased an answer
+      ("Here's how...") and then never gave one — replaced with a real
+      answer addressing the actual horticultural question (cross-
+      pollination affects next year's saved seed, not this season's fruit
+      flavor).
+    - **`achieve-effective-results-pest-control-now.md`** — **deleted
+      entirely**, not fixed in place. The whole post was written in first
+      person as a different, unrelated company ("Effective Results Pest
+      Controls" — "we are a reliable and professional pest control
+      company," a "180-day money-back guarantee," etc.), with nothing
+      about permaculture, land analysis, or Swales — looked like
+      mismatched content from a bulk-generation batch that landed on the
+      wrong site. Its two images (`achieve-effective-results-pest-
+      control-now-hero.jpg`, `achieve-effective-results-pest-control-
+      now-2.jpg`) were deleted too; nothing else in the codebase
+      referenced the slug.
+
+    **Not yet checked**: the remaining ~241 posts were only scanned for
+    these two specific patterns (placeholder brackets, off-brand "we are
+    a company" language) via a targeted grep pass, not read individually
+    — other, differently-shaped problems may still exist. One borderline
+    case noted but left as-is: `ultimate-guide-chicken-coop-automatic-
+    door.md` recommends a specific "Smart Autodoor" product with
+    unverified claims (180-day money-back guarantee) — on-topic and not
+    obviously broken like the two above, but the product claim itself
+    hasn't been verified as real.
+
 ### Monetization / access control
 
 19. **Specialized Data Package ($159 one-time) has no automated payment or
@@ -294,23 +363,28 @@ deferred** that carry real risk if ignored too long.
     email the result) is a clear, scoped follow-up once Stripe exists —
     not started.
 
-17. **RainAdvisor (and every future Core-paid advisory module) ships with
-    no real entitlement gate.** — *Severity: Low now, rising to High once
-    Stripe/subscription billing exists.* Built 2026-09-08 as the first of
-    three Core-paid advisory modules (see the monetization decision in
-    `status.md`), marked with a "Core" pill in the UI, but fully visible
-    and functional to every visitor — signed in or not, paid or not.
-    Deliberate for now: there's no `Users.SubscriptionStatus` column, no
-    Stripe webhook handler, and no live subscriber base to protect revenue
-    from, so building a real gate ahead of that infrastructure would be
-    premature. **Must be fixed before RainAdvisor (and the soil health
-    score / crop suitability engine once built) actually go live as
-    paid** — the fix is a straightforward extension of the existing
-    `protect`-middleware pattern (DB-backed per-request check, same as
-    `PasswordChangedAt`/`IsBlackListed`), not a new architecture; see
-    `status.md`'s 2026-09-08 RainAdvisor entry for the exact reasoning and
-    the code comment at the top of `RainAdvisor.jsx` where this is flagged
-    inline.
+17. **RainAdvisor and Crop Suitability Engine ship with no real
+    entitlement gate.** — *Severity: Low now, rising to High once
+    Stripe/subscription billing exists.* RainAdvisor built 2026-09-08,
+    Crop Suitability Engine built 2026-09-13 (see the monetization
+    decision in `status.md`) — both marked with a "Core" pill in the UI,
+    but fully visible and functional to every visitor, signed in or not,
+    paid or not. Deliberate for now: there's no `Users.SubscriptionStatus`
+    column, no Stripe webhook handler, and no live subscriber base to
+    protect revenue from, so building a real gate ahead of that
+    infrastructure would be premature. **Correction, 2026-09-13**: the
+    "soil health score" originally expected to be this pair's third
+    module turned out to already be a free, ungated feature
+    (`SoilCard.jsx`'s hero score) — it was never a Core-paid module and
+    doesn't need this gate at all; `pricing/page.js` has been corrected to
+    stop listing it as one. **Must be fixed before RainAdvisor and Crop
+    Suitability Engine actually go live as paid** — the fix is a
+    straightforward extension of the existing `protect`-middleware pattern
+    (DB-backed per-request check, same as `PasswordChangedAt`/
+    `IsBlackListed`), not a new architecture; see `status.md`'s 2026-09-08
+    RainAdvisor entry for the exact reasoning and the code comment at the
+    top of `RainAdvisor.jsx` (and now `CropSuitabilityEngine.jsx`) where
+    this is flagged inline.
 
 ---
 

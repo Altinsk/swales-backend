@@ -32,6 +32,396 @@ Calculators" link), and the calculators hub `<h1>` "Field Calculators" →
 `.blog-content`/`.related-reading-*`, related-post click navigates
 end-to-end, mobile grid stacks to 1 column.)
 
+2026-09-13 (**"i" info tooltips added to every field across all 26 Field
+Calculators** (`swales-services` `56aecaf`). Added a `TipIcon` to the
+shared `NumberField`/`SelectField` components — same hover-tooltip
+convention already used site-wide (RainAdvisor, SoilCard,
+SmartClimateCard), not a new pattern. Audited every calculator by
+comparing field count against `helpText` count per file and filled in
+the gaps (most fields already had `helpText` powering the always-visible
+line below the field; this surfaces the same text at the label level
+too, content drawn from what's already documented in each calculator's
+own lib module, nothing invented). Verified live: tooltip fires on hover
+with correct content, icon count matches field count per page. Full
+production build clean.)
+
+2026-09-13 (**Crop Suitability Engine built — and a real correction to
+the monetization roadmap found first.** Asked to build "the other two
+Core-paid advisory modules" (soil health score + crop suitability
+engine, RainAdvisor having been module 1). Before writing any code,
+checked the actual codebase rather than trusting the roadmap's
+"Should — not started" status for both — same discipline as the
+2026-09-03 correction session. **Soil health score turned out to
+already exist**: `SoilCard.jsx`'s hero display (lines ~83-95) already
+computes a real weighted 0-100 composite score (pH 25%, bulk density
+20%, organic carbon density 20%, nitrogen 15%, CEC 20%, each via
+severity-banded sub-scores) with a Critical→Excellent level badge and a
+full explanatory tooltip — live on the free Soil map layer today, never
+gated. Flagged this to Omar before building anything, since duplicating
+it would have been wasted work. Confirmed: only **crop suitability
+engine** was genuinely missing (the only trace anywhere was
+`pricing/page.js` still listing "Planned: soil health score & crop
+suitability engine" as one stale Core-paid bullet).
+
+**Built `cropSuitabilityService.js`** (pure logic, no React/network):
+ranks 5 broad crop categories — wheat, maize, legumes, vegetables, fruit
+trees — against a site's soil pH, drainage, and climate zone. Real reuse
+over reinvention: drainage uses `rainAdvisorService.js`'s
+`estimateHydrologicSoilGroup` directly (no duplicate texture-to-HSG
+logic), climate zone uses `smartClimateAdvisor.js`'s existing
+classification. Each factor scored 0-100 and combined climate 40% / pH
+35% / drainage 25% — climate weighted highest since it's the least
+amendable of the three (pH and drainage can both be actively managed;
+climate can't). pH optimal ranges and climate-zone fit per crop category
+sourced from general agronomy consensus (wheat 6.0-7.5 tolerating
+heavier clay-loam soil, maize 5.8-7.0 but genuinely waterlogging-
+sensitive, legumes/vegetables/fruit trees each with their own real
+tolerance profile) — documented inline with the same citation discipline
+as `rainAdvisorService.js`.
+
+**`CropSuitabilityEngine.jsx`** wired into `LayerDataPanel.jsx`'s
+`soilLayer` case, directly below `SoilCard` — same "Core" pill, same
+not-yet-hard-gated situation as RainAdvisor (no Stripe to gate against).
+Expandable rows show the specific reasons (climate/pH/drainage) behind
+each crop's score.
+
+**Verified live against real data** (Iowa, 41.878/-93.097 — genuinely
+came back as Phaeozems, the correct real-world WRB classification for
+Iowa prairie soil, a good sanity check the underlying pipeline is
+sound): pH 6.3, 40.8% clay → HSG D, Temperate climate zone. All 5
+scores hand-calculated independently and matched the live UI exactly —
+Wheat 89, Vegetables 86, Legumes 85, Fruit Trees 82, Maize 80 — including
+correctly identifying drainage as maize's specific limiting factor when
+expanded. Full production build clean.
+
+**Also fixed**: `pricing/page.js` was advertising the already-free soil
+health score as a Core-paid incentive. Corrected — dropped "Planned:"
+from RainAdvisor's line (it's built, just not hard-gated), removed "soil
+health score" entirely from Core's list, kept only "Planned: crop
+suitability engine" as the one item still genuinely upcoming.
+`swales-services` `7f288c2`.)
+
+2026-09-13 (**`roadmap_backlog.xlsx` updated to match Field Calculators'
+completed status** (`6401bbe`) — Backlog sheet rows 65 (Field
+Calculators) and 64 (Energy Calculators, folded into 65) marked Done,
+plus two A2 rows that turned out to already be covered by the build: row
+30 (ROI/payback calculator) and row 36 (Amendment calculator), both
+previously "Not started" against `SolarCard.jsx`/`SoilCard.jsx`, now
+Done via the Field Calculators build's `solar-wind-payback-calculator`
+and `amendment-rate-calculator`. Edited via PowerShell + Excel COM
+automation (`New-Object -ComObject Excel.Application`) rather than the
+usual Python/openpyxl route — this environment has no Python installed,
+confirmed by checking `python`/`python3`/`py` (all Windows Store stub
+redirects) before falling back; real Excel is installed here, so COM
+automation was the reliable alternative, not a workaround to flag as a
+concern. Also: added a green (`#16a34a`, the existing brand color, not a
+new one) hover state to the Field Calculators hub cards, which had no
+hover feedback despite being clickable links — a real CSS `:hover` rule
+via a `.field-calc-card` class rather than inline styles/JS, so
+`FieldCalculatorsList.jsx` stays a server component (`swales-services`
+`4b2620f`).)
+
+2026-09-13 (**Field Calculators: COMPLETE — all 26 of 26 calculators
+live** (`290d5cf`), finishing Tier 4 (the last 3). Two are worth
+flagging specifically:
+- **Keyline Plow Line Layout** — research into the actual Yeomans Keyline
+  design method (`WebSearch`/`WebFetch` against the Keyline design
+  literature, including its Wikipedia article) found that plow line
+  spacing has **no calculable formula** — unlike terrace vertical
+  interval, it's purely an equipment/design choice (the cultivation
+  implement's working width), not derived from slope or any site
+  variable. Rather than invent a fake spacing formula to fill the
+  registry slot, reframed the calculator around the one genuinely
+  calculable piece: how many parallel lines (and what total width) a
+  chosen spacing covers across a paddock. Registry title/summary updated
+  from "Keyline Design Spacing Calculator" (implied a formula that
+  doesn't exist) to "Keyline Plow Line Layout Calculator."
+- **Biogas Potential** — yield-per-kg-VS coefficients corroborated across
+  Oklahoma State University Extension and peer-reviewed bioenergy-
+  conversion studies. Takes volatile-solids mass directly as input rather
+  than chaining an uncertain %total-solids x %volatile-solids conversion
+  from raw waste weight, since compounding two separately uncertain
+  figures would produce a falsely precise final number.
+- **Hybrid System Balancer** — pure addition/comparison of solar+wind+
+  hydro daily generation against load; deliberately doesn't recompute
+  each source's own physics, which already lives correctly in the
+  dedicated Solar/Wind/Hydro calculators (avoids two copies of the same
+  math drifting out of sync).
+
+All 3 hand-verified against live output before shipping (biogas
+35.0m³/21.0m³ methane, keyline 67 lines, hybrid 12.0kWh/80%/3.0kWh
+shortfall — all exact). Full production build (310 static pages) clean.
+Hub page confirmed showing zero "Coming soon" badges; `sitemap.xml`
+confirmed with all 26 calculator URLs.
+
+**Field Calculators is now a finished feature**: 26 calculators across 6
+categories (Earthworks & Permaculture, General Agriculture, Vertical
+Farming, Microgreens, Aquaculture & Aquaponics, Energy), each with a
+real/hand-verified formula, an SEO/GEO article (explanatory sections +
+FAQ), and `SoftwareApplication`/`FAQPage` structured data. Nav impact:
+still exactly one "Field Calculators"-equivalent slot in the header
+("Calculators" inside the Tools dropdown) regardless of how many
+calculators exist underneath — the whole point of the nav restructure
+earlier this session. `roadmap_backlog.xlsx` still needs a matching
+status update for this row — not yet done from this environment.)
+
+2026-09-13 (**Field Calculators: all 10 Tier 3 calculators shipped — 23
+of 26 now live** (`8f2d4ad`). The research-heaviest tier — every
+calculator here needed a real published per-crop/species reference, not
+just a formula, so each was sourced via `WebSearch`/`WebFetch` against a
+primary source before building:
+- **Seed Rate & Plant Population** — row/in-row spacing from University
+  of Maine Cooperative Extension's vegetable planting chart.
+- **DLI** — formula + per-crop target ranges from Virginia Tech
+  Cooperative Extension publication SPES-720.
+- **Nutrient Solution Dosing** — deliberately does NOT use EC/PPM: the
+  industry uses incompatible "500" and "700" PPM conversion scales
+  depending on meter/manufacturer, a genuine ambiguity discovered during
+  research, not just an imprecision. Redesigned around proportional
+  strength scaling from the product's own labeled dose instead — exact
+  math, sidesteps the scale problem entirely.
+- **Vertical Farm Tier Yield** — yield-per-plant is a user-supplied
+  input, not a preset (real values vary 2-3x by variety/conditions,
+  judged too unreliable to invent, same reasoning as Amendment Rate in
+  Tier 2).
+- **Microgreens Seed Density** — grams/tray from Utah State University
+  Extension specifically, after finding multi-source grower-blog figures
+  disagreed by 2-3x for the same crop (e.g. sunflower cited as both 48g
+  and 125g) — picked one consistent authoritative source rather than
+  averaging conflicting ones.
+- **Microgreens Harvest Planner** — pure succession-planting pipeline
+  math; grow-cycle length left as a direct input rather than a guessed
+  "typical" table.
+- **Fish Stocking Density** — small-scale/backyard aquaponics guidance,
+  not commercial RAS intensities (which research showed varying 5x+
+  between sources depending on system intensity).
+- **Aquaponics Fish-to-Plant Ratio** — the real published UVI/Rakocy
+  feed-rate-ratio method ("Ten Guidelines for Aquaponic Systems").
+- **Dissolved Oxygen & Aeration** — feed-based O₂ demand rule of
+  thumb (~350g O₂/kg feed open system, ~1kg/kg feed RAS with
+  biofilter).
+- **Grazing Stocking Rate** — real Animal Unit Month (AUM) method,
+  consistent across Montana State/Oklahoma State/Wyoming extension
+  publications, including the standard "take half, leave half" 50%
+  utilization default.
+
+All 10 hand-verified against live browser output before shipping (every
+one an exact match to an independent calculation — see the commit message
+for the full list of verified values). Full production build (310 static
+pages) clean before pushing. **Only Tier 4 remains**: Keyline Design
+Spacing, Biogas Potential, Hybrid System Balancer — 3 calculators, 23 of
+26 already live.)
+
+2026-09-13 (**Field Calculators: SEO/GEO article pattern added + all 7
+Tier 2 calculators shipped — 13 of 26 now live** (`ec0b476`, `940cb69`).
+Omar's ask: every calculator page needs a real article underneath it
+targeting SEO/GEO keywords, not just the tool itself. Built
+`CalculatorArticle.jsx` (explanatory sections + a direct-Q&A FAQ list —
+the FAQ format specifically chosen because both Google's FAQPage rich
+results and AI answer engines parse clean Q&A pairs well) and
+`FAQSchema.jsx` (FAQPage JSON-LD), wired into `CalculatorPageShell` via a
+new `article` prop. Retrofitted real articles (3 sections + 4 FAQs each,
+not filler) onto all 6 existing Tier 1 calculators, then built all 7 Tier
+2 calculators with the pattern from the start:
+- **Compost C:N Ratio** — mass-weighted average of preset C:N ratios,
+  explicitly documented as a simplified approximation (not Cornell Waste
+  Management Institute's precise %C/%N/%moisture method, which needs
+  lab-tested per-material values this session couldn't source reliably).
+  Researched via `WebSearch`/`WebFetch` against Cornell's own published
+  composting reference before picking representative preset ratios.
+- **Pond & Dam Volume** — exact frustum (truncated pyramid) geometry
+  rather than a rough correction-factor shortcut; verified it correctly
+  degenerates to a plain pyramid volume when a steep bank slope shrinks
+  the bottom to zero.
+- **Soil Amendment Rate** — pure area-unit conversion; deliberately does
+  not invent an application rate, only converts the one the user already
+  has from a soil test or product label.
+- **Battery Bank / Inverter / Wind Output / ROI-Payback** — standard,
+  textbook off-grid and renewable-energy formulas, no research needed.
+
+All 7 hand-verified against live browser output before shipping (compost
+48.75:1, pond 129.7m³, amendment 2.5kg, battery 312Ah, inverter 1800W,
+wind 10950kWh/yr, payback 8.9yrs — every one an exact match to an
+independent calculation). Full production build run clean before each
+push. **Tier 2 complete.** Next: Tier 3 (needs published per-crop/species
+reference tables — seed rates, DLI targets, nutrient dosing, microgreens
+seed density, aquaculture stocking density/ratios — more research-heavy
+than Tier 1-2, will need the same `WebSearch`/`WebFetch` sourcing
+discipline used for compost ratios above) and Tier 4.)
+
+2026-09-13 (**Field Calculators: all 6 Tier 1 calculators now live**
+(`64f56dd`) — completed the last two, Terrace Spacing and Rainwater Tank
+Sizing. **Terrace Spacing** deliberately did not use the classic cropland
+"Ramser's formula" terrace-spacing equations found via `WebSearch`/
+`WebFetch` research — their region/soil-specific constants vary by source
+and couldn't be confidently verified against a primary reference (several
+PDF sources failed to fetch cleanly). Used the deterministic bench-terrace
+geometric relationship instead: VI = (S &times; Wb) / (100 &minus; S
+&times; U), derived from first principles (natural ground's drop over one
+bench+riser span must equal VI) and verified numerically before writing
+any code (S=30%, Wb=2m, U=0.5 -> VI=0.706m, reproduces exactly). **Rainwater
+Tank Sizing** uses the standard, well-established harvesting-yield formula
+(volume = area x rainfall x runoff coefficient, exact by unit identity).
+Both hand-verified against live browser output before shipping: Terrace
+(30%/2m/earth riser defaults) -> VI=0.71m, cycle width=2.35m, 15 terraces
+for a 10m slope, all exact; Rainwater Tank (50m²/25mm/metal roof defaults)
+-> 1125L, exact. Hub page's Earthworks & Permaculture section now shows
+zero "Coming soon" badges. Full production build run and clean before
+pushing this time (see the nav-restructure entry below for why that
+matters now). **Field Calculators Tier 1 is fully complete** — next up is
+Tier 2 (battery/inverter sizing, wind turbine output, compost ratio,
+pond/dam sizing, amendment dosing, ROI/payback) whenever picked back up.)
+
+2026-09-13 (**`swales-services` nav restructured to 5 fixed top-level
+slots** (`111ddcb`..`68417ac`) — the header was growing by one link per
+feature category (Services, Compare, Designer, Field Calculators all
+separate) with 22 more calculators still to come and no room left.
+Omar's call: How it works / **Tools** / Professional Services / **Resources**
+/ Contact Us, and it never grows past 5 again — every addition goes inside
+an existing dropdown's item list. **Tools** = Map Analysis (was
+"Services") + Compare Sites + **Calculators** (was "Field Calculators",
+Omar's explicit rename — URL unchanged, still `/field-calculators`) +
+Design Canvas (was "Designer"). **Resources** = Blog now, ready to absorb
+the Soil Types/Climate Zones reference pages already on the Phase D
+roadmap without another nav change. Extracted the bespoke
+`ProfessionalServicesDropdown`/`Accordion` (built earlier this session)
+into generic `NavDropdown`/`NavAccordion` components so all three
+dropdowns share one implementation. Verified live (dropdown open state,
+mobile accordion expand, correct hrefs) and a full `npm run build` clean
+before pushing this time, after the build broke on unescaped-JSX-entity
+lint errors the first time Field Calculators shipped — see the entry
+below for that fix.)
+
+2026-09-13 (**Field Calculators: hub page + first 4 calculators shipped**
+— built and pushed to `swales-services` `main` (`111ddcb`) the same session
+the scope was decided (see the entry directly below for the full category
+list/tier plan). **Nav resolved as a single link**: "Field Calculators" ->
+`/field-calculators`, same pattern as "Blog" — individual calculators are
+never in the nav, only reachable via the hub page or search, so the menu
+never grows no matter how many calculators eventually exist (Omar's
+concern, raised mid-build). **Hub page layout**: one visual block per
+category (Omar's explicit call, matching the Consultations page's Energy
+Systems/Water Systems sections) rather than a filter+grid — plain server
+component, no client JS needed, better for crawlability. **4 calculators
+live**, each independently hand-verified against the displayed output
+before shipping (same discipline as RainAdvisor's launch): Swale Volume &
+Dimensions (0.3m depth x 0.45m avg width x 10m length = 1.35m³, confirmed
+exact), Mulch Calculator (10m² x 5cm = 0.5m³ = 0.65yd³ = 9 standard bags,
+confirmed exact), Solar PV Array Size (10kWh / (4.5h x 0.8) = 2.78kW,
+confirmed exact), Micro-Hydro Power (1000 x 9.81 x 0.05 x 10 x 0.7 / 1000 =
+3.43kW, confirmed exact). Each calculator's pure math lives in its own
+`src/lib/calculators/*.js` module, independent of `rainAdvisorService.js`
+even where the formula overlaps (swale volume), per
+`feedback_keep_free_tools_separate_from_gated`. **SEO/GEO**: `generateMetadata`
++ `SoftwareApplication` JSON-LD per calculator page, `CollectionPage`/
+`ItemList` JSON-LD on the hub — same structured-data pattern already
+proven on `/blog/[slug]`'s `BlogPostingSchema`. Registry-driven
+(`src/lib/calculators/registry.js`) — the hub, sitemap, and future
+calculators all read one source of truth; the 22 not-yet-built calculators
+(Terrace Spacing, Rainwater Tank Sizing, and everything in Tiers 2-4) show
+on the hub as "Coming soon" so the full scope is visible even before
+they're built. Verified live in the browser: all 4 calculators' math,
+mobile layout, sitemap.xml entries, and JSON-LD output. **Not yet done**:
+the remaining 2 Tier-1 calculators (Terrace Spacing, Rainwater Tank
+Sizing) and everything in Tiers 2-4.)
+
+2026-09-13 (**Field Calculators scoped and build started** — folded Energy
+Calculators (previously its own roadmap row) plus three net-new categories
+(Vertical Farming, Microgreens, Aquaculture/Aquaponics) into one Field
+Calculators line, per Omar's explicit call to keep it one roadmap row.
+Confirmed independent of both pre-launch gates (plant images, Stripe) —
+started immediately. Design decision: every calculator is standalone
+manual-entry (type numbers in, get an answer) — no map/pin/API dependency,
+both for reliability (zero external-data failure modes) and to keep this
+free tool genuinely separate from the gated map-driven advisors (RainAdvisor
+etc.), per `feedback_keep_free_tools_separate_from_gated`. Cut-fill is the
+one exception flagged as needing a real elevation grid, not pure manual
+entry — still an open decision on how to scope it.
+
+**Full category list**:
+- *Earthworks/Permaculture*: swale volume/dimensions, terrace spacing/
+  cut-fill, rainwater harvesting tank sizing, mulch volume, compost C:N
+  ratio, pond/dam volume & spillway sizing, keyline/plow-line spacing.
+- *General Agriculture*: fertilizer/amendment dosing (already on Phase A2
+  backlog), seed rate/plant population, stocking rate/grazing (AUM).
+- *Vertical Farming*: Daily Light Integral (DLI), nutrient solution dosing
+  (EC/pH), tray/tier yield estimator.
+- *Microgreens*: seed density per tray, harvest cycle/turnover planner.
+- *Aquaculture/Aquaponics*: stocking density, fish-to-plant ratio,
+  dissolved oxygen/aeration requirement.
+- *Energy*: solar PV array sizing, solar battery bank sizing, solar
+  inverter sizing, solar/wind ROI-payback (already on Phase A2 backlog),
+  wind turbine output estimate, hydro power output, biogas/biomass
+  potential, hybrid system load balancer.
+
+**Build priority**:
+- Tier 1 (build first): swale volume/dimensions, terrace spacing/cut-fill,
+  mulch volume, rainwater tank sizing, solar PV array sizing, hydro power
+  output. Reasoning: already-scoped or zero-dependency formulas, and hydro
+  is a genuine capability gap (Consultations currently lists micro-hydro as
+  enquiry-only with "no existing app data" backing it).
+- Tier 2: battery/inverter sizing, wind turbine output estimate, compost
+  ratio, pond/dam sizing, amendment dosing, ROI/payback.
+- Tier 3: everything needing a published per-crop/species reference table
+  first (seed rate, grazing rate, DLI, nutrient dosing, tray yield,
+  microgreens seed density/harvest planner, aquaculture stocking density,
+  fish-to-plant ratio, dissolved oxygen).
+- Tier 4: keyline spacing (needs the real Yeomans method sourced
+  correctly), biogas potential, hybrid system load balancer (depends on
+  solar+wind+hydro all shipping first).
+
+**Site structure being built**: one `/field-calculators` hub/explainer page
+(what these are, why they matter, how to measure your own inputs, general
+guidance) linking to one SEO-optimized page per calculator
+(`generateMetadata` + JSON-LD structured data, same pattern already proven
+on `/blog/[slug]` — see that page's `BlogPostingSchema` for precedent).
+Keyword targeting per calculator mirrors the existing blog's proven
+long-tail calculator-style titles (e.g. `wind-turbine-calculator-predict-
+power-and-savings-now`, `accurate-soil-calculator-how-much-topsoil-do-you-
+need`) rather than guessing a new convention.
+
+2026-09-13 (**`swales-services`: ~5-day-old uncommitted blog work found and
+shipped** — found, not authored this session: ~53 new `content/blog/*.md`
+posts with matching hero/thumb images (last touched 2026-09-08, never
+committed), plus `src/lib/blog-clusters.js` (new) and edits to `blog.js`/
+`app/blog/[slug]/page.js` sitting uncommitted alongside them. No record of
+this work exists anywhere (checked memory, this file, `future-concerns.md`)
+— flagged to Omar, who asked to commit and push it as-is rather than
+inspect first. What it does: `getRelatedPosts()` now
+prefers same-topic-cluster posts over the broad `category` field (which
+groups 100+ posts under one label like "Permaculture"); post markdown's
+`###` section headings are promoted to `<h2>` at render time (posts never
+use `##`, so `<h1>` title → `<h3>` sections skipped a heading level, an
+SEO-flagged gap — fixed centrally instead of editing 240+ files); two
+existing posts (`aquaculture-meaning`, `fly-fruit-trap`) had a broken
+title/excerpt (literal `"...html"` title, `"undefined"` excerpt) from a bad
+import, now fixed. Committed and pushed directly to `main` (`b070d91`) —
+same no-PR-required precedent as the nav change below.)
+
+2026-09-13 (**`swales-services` nav: Consultations + Specialized Reports
+merged under one "Professional Services" dropdown** — both are
+enquiry-based/human-fulfilled offerings, distinct from the existing
+"Services" nav item which covers the free automated map tools. Desktop
+gets a click-toggle dropdown (`ProfessionalServicesDropdown`), mobile
+gets an accordion (`ProfessionalServicesAccordion`) — both in
+`Header.jsx`, sharing one `PROFESSIONAL_SERVICES_LINKS` list. Verified
+live: desktop dropdown opens/closes and both links navigate correctly;
+mobile accordion expands and shows both nested links. **Also**: Omar
+flagged that social media profile/cover images (Facebook, Instagram, X,
+LinkedIn, YouTube, Discord) still carry the old logo from the 2026-09-12
+rollout below — logged as `future-concerns.md` item 21, needs manual
+per-platform updates outside this codebase.)
+
+2026-09-12 (**Logo updated everywhere across both frontend apps** — new
+light/dark SVG variants, favicons regenerated from a cropped icon-only
+mark, PDF report generators deliberately left on PNG (`html2canvas`
+compatibility), and a real design bug caught by checking live rather
+than trusting a static audit: `swales-designer`'s login/signup pages are
+actually dark-background, not light as first reported — the dark-text
+logo was nearly invisible there until fixed. Also fixed a stale,
+typo'd logo URL in the backend's email template. See the dated entry
+below for full detail.)
+
 2026-09-12 (**Consultations page built** — free, enquiry-only on-site
 energy/water design consultations at `/consultations`, nav reordered
 (Consultations now sits right after Designer, Contact Us moved to the
@@ -121,6 +511,83 @@ errors added across auth forms in both frontends — see below)
 2026-09-03 (Google sign-in on permaculturetools.online now in progress —
 needs a Google Cloud Console change only Omar can make; see "Still open,
 needs Omar" below)
+
+## Logo updated everywhere, both apps — 2026-09-12
+
+Omar supplied two new logo SVGs (a dark-wordmark version for light
+backgrounds, a white-wordmark version for dark backgrounds) and asked
+for a full rollout, plus asked whether SVG or PNG is the right format
+going forward.
+
+**Answer given**: SVG for anything rendered on a page — scales perfectly,
+tiny file size, crisp on retina — with exactly two exceptions where PNG
+stays necessary: **favicons** (broader OS/browser compatibility at tiny
+sizes) and **email templates** (most email clients render SVG
+unreliably or not at all).
+
+**What changed, `swales-services`** (`public/images/`): `logo.svg`,
+`logo.png`, `logo.jpg` replaced with the new light (dark-text) logo;
+`footer-logo.svg` added and `footer-logo.png` replaced with the new dark
+(white-text) variant; `fab-icon.png` replaced with a cropped icon-only
+mark (sun + water chevrons, no wordmark — extracted from the source SVG
+and verified legible down to 32×32 and 16×16 before shipping). Code
+references switched from `.png` to `.svg` in `Header.jsx` and all five
+auth pages (login/signup/forgot-password/reset-password/verify-email);
+`Footer.jsx` switched to the new `footer-logo.svg`. **Deliberately left
+as PNG**: `CombinedReportContent.jsx`/`ComparisonReportContent.jsx` (the
+PDF report generators) — `html2canvas`, which they rely on, has
+unreliable SVG support, so switching those would risk breaking report
+generation for a purely cosmetic gain.
+
+**What changed, `swales-designer`** (`public/`): same `logo.svg`/
+`logo.png`/`logo.jpg`/`fab-icon.png` replacement. Code references
+switched to `.svg` in `Header.tsx` (also fixed a latent bug: hardcoded
+`width={100} height={100}` assumed a square logo — the real logo is
+~1.5:1, so this would have squished it; corrected to `height={66}`) and
+`MobileHeader.tsx`.
+
+**Real bug caught by visually checking live, not by trusting the initial
+audit**: the initial file/reference inventory (done via a sub-agent
+search) reported `swales-designer`'s login/signup pages as light-background,
+matching `swales-services`' equivalent pages. Live in the browser, they're
+actually **dark-background** — the light (dark-green-text) logo was nearly
+invisible against it. Added a new `public/logo-dark.svg` (the white-text
+variant) specifically for `swales-designer` and switched
+`app/login/page.tsx`/`app/signup/page.tsx` to it; re-verified live,
+now fully legible. Lesson: a static code/CSS audit can miss what a
+background actually renders as — worth a real visual check on anything
+going onto an unfamiliar page, which is exactly what caught this one
+before it shipped. All four Coffee/SignupQuote popups (2 per app) were
+also checked live rather than assumed — all genuinely white-card/light,
+confirmed correct as originally audited.
+
+**`swales-backend`**: `utils/emailService.js`'s `LOGO_URL` was hardcoded
+to `https://garden-desinger.vercel.app/logo.png` — the same typo'd,
+long-stale domain already removed from the CORS allowlist back on
+2026-08-24, just never caught here. Fixed to
+`https://permaculturetools.online/images/logo.png`, which now serves the
+real, current logo once `swales-services` redeploys. Stays PNG
+deliberately (email-client SVG support is unreliable).
+
+**Follow-up, same day**: Omar supplied a corrected dark-logo source file
+and asked for it to replace the one already shipped, flagging "a mistake
+with the previous one." Diffed the two files directly: they turn out to
+render **identically** — same paths, same final colors — the only
+difference is which internal CSS class name maps to which color (e.g.
+the wordmark is `cls-1` in one file and `cls-2` in the other, but both
+map to `#fff` either way). Whatever the concern was, it wasn't a visual
+difference in this file. Replaced `footer-logo.svg`
+(`swales-services`) and `logo-dark.svg` (`swales-designer`) with the
+exact file supplied anyway — removes any doubt regardless — and
+re-verified live on both actual dark backgrounds (the footer, and
+designer's login page) to confirm no regression.
+
+**Not replaced, flagged instead**: `swales-designer/public/favicon.ico`
+— confirmed unreferenced in any source file (Next.js's `metadata.icons`
+config points at `fab-icon.png` instead), so browsers never actually
+serve it; left as-is rather than spending effort regenerating a
+multi-resolution `.ico` for an asset nothing points to. Worth a look if
+that ever changes.
 
 ## Specialized Reports page built, priced, and gated — 2026-09-12
 
