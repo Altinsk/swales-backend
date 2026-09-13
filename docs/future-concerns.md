@@ -301,6 +301,18 @@ deferred** that carry real risk if ignored too long.
     platform's profile/cover image with the new logo — not something a code
     change can fix. Flagged 2026-09-13 at Omar's request.
 
+### Content
+
+22. **Finish the remaining blog posts (up to +80), then republish.** —
+    *Severity: Low.* Omar's own content task, not a code fix — flagged
+    2026-09-13 after the ~53-post batch found uncommitted and shipped the
+    same day (see `status.md`'s 2026-09-13 entry). `content/blog/` current
+    total is 243 posts as of that commit; which specific subset counts as
+    the "+80" still needing finishing wasn't specified here — Omar tracks
+    that himself. Once the remaining posts are done, they need the same
+    treatment as the last batch: commit + push to `swales-services` `main`
+    (no PR required for this repo) to actually go live.
+
 ### Monetization / access control
 
 19. **Specialized Data Package ($159 one-time) has no automated payment or
