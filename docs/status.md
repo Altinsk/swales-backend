@@ -7,6 +7,61 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**Field Calculators scoped and build started** — folded Energy
+Calculators (previously its own roadmap row) plus three net-new categories
+(Vertical Farming, Microgreens, Aquaculture/Aquaponics) into one Field
+Calculators line, per Omar's explicit call to keep it one roadmap row.
+Confirmed independent of both pre-launch gates (plant images, Stripe) —
+started immediately. Design decision: every calculator is standalone
+manual-entry (type numbers in, get an answer) — no map/pin/API dependency,
+both for reliability (zero external-data failure modes) and to keep this
+free tool genuinely separate from the gated map-driven advisors (RainAdvisor
+etc.), per `feedback_keep_free_tools_separate_from_gated`. Cut-fill is the
+one exception flagged as needing a real elevation grid, not pure manual
+entry — still an open decision on how to scope it.
+
+**Full category list**:
+- *Earthworks/Permaculture*: swale volume/dimensions, terrace spacing/
+  cut-fill, rainwater harvesting tank sizing, mulch volume, compost C:N
+  ratio, pond/dam volume & spillway sizing, keyline/plow-line spacing.
+- *General Agriculture*: fertilizer/amendment dosing (already on Phase A2
+  backlog), seed rate/plant population, stocking rate/grazing (AUM).
+- *Vertical Farming*: Daily Light Integral (DLI), nutrient solution dosing
+  (EC/pH), tray/tier yield estimator.
+- *Microgreens*: seed density per tray, harvest cycle/turnover planner.
+- *Aquaculture/Aquaponics*: stocking density, fish-to-plant ratio,
+  dissolved oxygen/aeration requirement.
+- *Energy*: solar PV array sizing, solar battery bank sizing, solar
+  inverter sizing, solar/wind ROI-payback (already on Phase A2 backlog),
+  wind turbine output estimate, hydro power output, biogas/biomass
+  potential, hybrid system load balancer.
+
+**Build priority**:
+- Tier 1 (build first): swale volume/dimensions, terrace spacing/cut-fill,
+  mulch volume, rainwater tank sizing, solar PV array sizing, hydro power
+  output. Reasoning: already-scoped or zero-dependency formulas, and hydro
+  is a genuine capability gap (Consultations currently lists micro-hydro as
+  enquiry-only with "no existing app data" backing it).
+- Tier 2: battery/inverter sizing, wind turbine output estimate, compost
+  ratio, pond/dam sizing, amendment dosing, ROI/payback.
+- Tier 3: everything needing a published per-crop/species reference table
+  first (seed rate, grazing rate, DLI, nutrient dosing, tray yield,
+  microgreens seed density/harvest planner, aquaculture stocking density,
+  fish-to-plant ratio, dissolved oxygen).
+- Tier 4: keyline spacing (needs the real Yeomans method sourced
+  correctly), biogas potential, hybrid system load balancer (depends on
+  solar+wind+hydro all shipping first).
+
+**Site structure being built**: one `/field-calculators` hub/explainer page
+(what these are, why they matter, how to measure your own inputs, general
+guidance) linking to one SEO-optimized page per calculator
+(`generateMetadata` + JSON-LD structured data, same pattern already proven
+on `/blog/[slug]` — see that page's `BlogPostingSchema` for precedent).
+Keyword targeting per calculator mirrors the existing blog's proven
+long-tail calculator-style titles (e.g. `wind-turbine-calculator-predict-
+power-and-savings-now`, `accurate-soil-calculator-how-much-topsoil-do-you-
+need`) rather than guessing a new convention.
+
 2026-09-13 (**`swales-services`: ~5-day-old uncommitted blog work found and
 shipped** — found, not authored this session: ~53 new `content/blog/*.md`
 posts with matching hero/thumb images (last touched 2026-09-08, never
