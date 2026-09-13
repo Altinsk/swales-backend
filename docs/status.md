@@ -7,6 +7,26 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**`roadmap_backlog.xlsx` updated to match Field Calculators'
+completed status** (`6401bbe`) — Backlog sheet rows 65 (Field
+Calculators) and 64 (Energy Calculators, folded into 65) marked Done,
+plus two A2 rows that turned out to already be covered by the build: row
+30 (ROI/payback calculator) and row 36 (Amendment calculator), both
+previously "Not started" against `SolarCard.jsx`/`SoilCard.jsx`, now
+Done via the Field Calculators build's `solar-wind-payback-calculator`
+and `amendment-rate-calculator`. Edited via PowerShell + Excel COM
+automation (`New-Object -ComObject Excel.Application`) rather than the
+usual Python/openpyxl route — this environment has no Python installed,
+confirmed by checking `python`/`python3`/`py` (all Windows Store stub
+redirects) before falling back; real Excel is installed here, so COM
+automation was the reliable alternative, not a workaround to flag as a
+concern. Also: added a green (`#16a34a`, the existing brand color, not a
+new one) hover state to the Field Calculators hub cards, which had no
+hover feedback despite being clickable links — a real CSS `:hover` rule
+via a `.field-calc-card` class rather than inline styles/JS, so
+`FieldCalculatorsList.jsx` stays a server component (`swales-services`
+`4b2620f`).)
+
 2026-09-13 (**Field Calculators: COMPLETE — all 26 of 26 calculators
 live** (`290d5cf`), finishing Tier 4 (the last 3). Two are worth
 flagging specifically:
