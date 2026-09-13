@@ -307,11 +307,47 @@ deferred** that carry real risk if ignored too long.
     *Severity: Low.* Omar's own content task, not a code fix — flagged
     2026-09-13 after the ~53-post batch found uncommitted and shipped the
     same day (see `status.md`'s 2026-09-13 entry). `content/blog/` current
-    total is 243 posts as of that commit; which specific subset counts as
-    the "+80" still needing finishing wasn't specified here — Omar tracks
-    that himself. Once the remaining posts are done, they need the same
-    treatment as the last batch: commit + push to `swales-services` `main`
-    (no PR required for this repo) to actually go live.
+    total is 242 posts (243 minus the one pulled below). Which specific
+    subset counts as the "+80" still needing finishing wasn't specified
+    here — Omar tracks that himself. Once the remaining posts are done,
+    they need the same treatment as the last batch: commit + push to
+    `swales-services` `main` (no PR required for this repo) to actually go
+    live.
+
+    **Already checked and fixed, 2026-09-13 — skip these two when doing
+    the +80 pass, they're done:**
+    - **`avoid-these-bad-companion-plants-for-pumpkins.md`** — the
+      "Recommended Seed Suppliers" section had 5 literal unfilled
+      `[Insert your own talking point]` placeholder bullets, live on the
+      site. Replaced with real (non-branded — no specific supplier names
+      invented) guidance on what to look for in a seed supplier. Also
+      fixed a second issue in the same post: a "Can Bad Companion Plants
+      Affect the Taste of Pumpkins?" section that teased an answer
+      ("Here's how...") and then never gave one — replaced with a real
+      answer addressing the actual horticultural question (cross-
+      pollination affects next year's saved seed, not this season's fruit
+      flavor).
+    - **`achieve-effective-results-pest-control-now.md`** — **deleted
+      entirely**, not fixed in place. The whole post was written in first
+      person as a different, unrelated company ("Effective Results Pest
+      Controls" — "we are a reliable and professional pest control
+      company," a "180-day money-back guarantee," etc.), with nothing
+      about permaculture, land analysis, or Swales — looked like
+      mismatched content from a bulk-generation batch that landed on the
+      wrong site. Its two images (`achieve-effective-results-pest-
+      control-now-hero.jpg`, `achieve-effective-results-pest-control-
+      now-2.jpg`) were deleted too; nothing else in the codebase
+      referenced the slug.
+
+    **Not yet checked**: the remaining ~241 posts were only scanned for
+    these two specific patterns (placeholder brackets, off-brand "we are
+    a company" language) via a targeted grep pass, not read individually
+    — other, differently-shaped problems may still exist. One borderline
+    case noted but left as-is: `ultimate-guide-chicken-coop-automatic-
+    door.md` recommends a specific "Smart Autodoor" product with
+    unverified claims (180-day money-back guarantee) — on-topic and not
+    obviously broken like the two above, but the product claim itself
+    hasn't been verified as real.
 
 ### Monetization / access control
 
