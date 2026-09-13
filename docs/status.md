@@ -7,6 +7,53 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**Field Calculators: all 10 Tier 3 calculators shipped — 23
+of 26 now live** (`8f2d4ad`). The research-heaviest tier — every
+calculator here needed a real published per-crop/species reference, not
+just a formula, so each was sourced via `WebSearch`/`WebFetch` against a
+primary source before building:
+- **Seed Rate & Plant Population** — row/in-row spacing from University
+  of Maine Cooperative Extension's vegetable planting chart.
+- **DLI** — formula + per-crop target ranges from Virginia Tech
+  Cooperative Extension publication SPES-720.
+- **Nutrient Solution Dosing** — deliberately does NOT use EC/PPM: the
+  industry uses incompatible "500" and "700" PPM conversion scales
+  depending on meter/manufacturer, a genuine ambiguity discovered during
+  research, not just an imprecision. Redesigned around proportional
+  strength scaling from the product's own labeled dose instead — exact
+  math, sidesteps the scale problem entirely.
+- **Vertical Farm Tier Yield** — yield-per-plant is a user-supplied
+  input, not a preset (real values vary 2-3x by variety/conditions,
+  judged too unreliable to invent, same reasoning as Amendment Rate in
+  Tier 2).
+- **Microgreens Seed Density** — grams/tray from Utah State University
+  Extension specifically, after finding multi-source grower-blog figures
+  disagreed by 2-3x for the same crop (e.g. sunflower cited as both 48g
+  and 125g) — picked one consistent authoritative source rather than
+  averaging conflicting ones.
+- **Microgreens Harvest Planner** — pure succession-planting pipeline
+  math; grow-cycle length left as a direct input rather than a guessed
+  "typical" table.
+- **Fish Stocking Density** — small-scale/backyard aquaponics guidance,
+  not commercial RAS intensities (which research showed varying 5x+
+  between sources depending on system intensity).
+- **Aquaponics Fish-to-Plant Ratio** — the real published UVI/Rakocy
+  feed-rate-ratio method ("Ten Guidelines for Aquaponic Systems").
+- **Dissolved Oxygen & Aeration** — feed-based O₂ demand rule of
+  thumb (~350g O₂/kg feed open system, ~1kg/kg feed RAS with
+  biofilter).
+- **Grazing Stocking Rate** — real Animal Unit Month (AUM) method,
+  consistent across Montana State/Oklahoma State/Wyoming extension
+  publications, including the standard "take half, leave half" 50%
+  utilization default.
+
+All 10 hand-verified against live browser output before shipping (every
+one an exact match to an independent calculation — see the commit message
+for the full list of verified values). Full production build (310 static
+pages) clean before pushing. **Only Tier 4 remains**: Keyline Design
+Spacing, Biogas Potential, Hybrid System Balancer — 3 calculators, 23 of
+26 already live.)
+
 2026-09-13 (**Field Calculators: SEO/GEO article pattern added + all 7
 Tier 2 calculators shipped — 13 of 26 now live** (`ec0b476`, `940cb69`).
 Omar's ask: every calculator page needs a real article underneath it
