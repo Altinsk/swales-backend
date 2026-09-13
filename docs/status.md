@@ -7,6 +7,19 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**"i" info tooltips added to every field across all 26 Field
+Calculators** (`swales-services` `56aecaf`). Added a `TipIcon` to the
+shared `NumberField`/`SelectField` components — same hover-tooltip
+convention already used site-wide (RainAdvisor, SoilCard,
+SmartClimateCard), not a new pattern. Audited every calculator by
+comparing field count against `helpText` count per file and filled in
+the gaps (most fields already had `helpText` powering the always-visible
+line below the field; this surfaces the same text at the label level
+too, content drawn from what's already documented in each calculator's
+own lib module, nothing invented). Verified live: tooltip fires on hover
+with correct content, icon count matches field count per page. Full
+production build clean.)
+
 2026-09-13 (**Crop Suitability Engine built — and a real correction to
 the monetization roadmap found first.** Asked to build "the other two
 Core-paid advisory modules" (soil health score + crop suitability
