@@ -13,6 +13,7 @@ const elementRoutes = require("./routes/elementRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const subscribeRoutes = require("./routes/subscribeRoutes");
 const path = require("path");
+const { publicActionLimiter } = require("./utils/rateLimiters");
 
 const db = require("./models");
 const axios = require("axios");
@@ -39,7 +40,12 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-app.use(express.json());
+// Default body-parser limit is 100kb - too small for this API: project
+// saves/share-links send a base64 canvas thumbnail inside the JSON body
+// (createProject/updateProject's `thumbnail` field), and any real PNG
+// screenshot clears 100kb easily, so every save with a thumbnail was
+// getting rejected with a 413 before reaching the controller.
+app.use(express.json({ limit: "15mb" }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -52,67 +58,33 @@ app.use("/api/elements", elementRoutes);
 app.use("/api/contact-us", contactRoutes);
 app.use("/api/sub", subscribeRoutes);
 
-app.post("/api/temporal", async (req, res) => {
-  axios
-    .post("https://globalwindatlas.info/api/temporal", req.body, {
-      headers: { Referer: " https://globalwindatlas.info/en/" },
-    })
-    .then((response) => {
-      res.status(200).json(response.data);
-    });
-});
-app.post("/api/gwa/custom/windSpeed", async (req, res) => {
-  // req.body.height = 100;
-  axios
-    .post("https://globalwindatlas.info/api/gwa/custom/windSpeed", req.body, {
-      headers: { Referer: " https://globalwindatlas.info/en/" },
-    })
-    .then((response) => {
-      res.status(200).json(response.data);
-    });
-});
-app.post("/api/gwa/custom/powerDensity", async (req, res) => {
-  // req.body.height = 100;
-  axios
-    .post(
-      "https://globalwindatlas.info/api/gwa/custom/powerDensity",
+// Thin proxy in front of globalwindatlas.info, needed because that API
+// doesn't send CORS headers - the browser can't call it directly. All four
+// routes previously used `.then()` with no `.catch()`, so any upstream
+// failure (timeout, 4xx/5xx, DNS hiccup) produced an unhandled promise
+// rejection: Express never sent a response and the request hung until the
+// platform's own timeout instead of failing fast. Centralized here so the
+// fix (and the rate limiter, since this has no auth to rely on) applies
+// once instead of four times.
+const proxyToGlobalWindAtlas = (upstreamPath) => async (req, res) => {
+  try {
+    const response = await axios.post(
+      `https://globalwindatlas.info${upstreamPath}`,
       req.body,
-      {
-        headers: { Referer: " https://globalwindatlas.info/en/" },
-      },
-    )
-    .then((response) => {
-      res.status(200).json(response.data);
-    });
-});
-app.post("/api/gwa/custom/windFrequencyRose", async (req, res) => {
-  // req.body.height = 100;
-  axios
-    .post(
-      "https://globalwindatlas.info/api/gwa/custom/windFrequencyRose",
-      req.body,
-      {
-        headers: { Referer: " https://globalwindatlas.info/en/" },
-      },
-    )
-    .then((response) => {
-      res.status(200).json(response.data);
-    });
-});
-app.post("/api/gwa/custom/windSpeedRose", async (req, res) => {
-  // req.body.height = 100;
-  axios
-    .post(
-      "https://globalwindatlas.info/api/gwa/custom/windSpeedRose",
-      req.body,
-      {
-        headers: { Referer: " https://globalwindatlas.info/en/" },
-      },
-    )
-    .then((response) => {
-      res.status(200).json(response.data);
-    });
-});
+      { headers: { Referer: "https://globalwindatlas.info/en/" } },
+    );
+    res.status(200).json(response.data);
+  } catch (err) {
+    console.error(`GWA proxy error (${upstreamPath}):`, err.message);
+    res.status(502).json({ success: false, message: "Wind data provider unavailable", data: null, error: null });
+  }
+};
+
+app.post("/api/temporal", publicActionLimiter, proxyToGlobalWindAtlas("/api/temporal"));
+app.post("/api/gwa/custom/windSpeed", publicActionLimiter, proxyToGlobalWindAtlas("/api/gwa/custom/windSpeed"));
+app.post("/api/gwa/custom/powerDensity", publicActionLimiter, proxyToGlobalWindAtlas("/api/gwa/custom/powerDensity"));
+app.post("/api/gwa/custom/windFrequencyRose", publicActionLimiter, proxyToGlobalWindAtlas("/api/gwa/custom/windFrequencyRose"));
+app.post("/api/gwa/custom/windSpeedRose", publicActionLimiter, proxyToGlobalWindAtlas("/api/gwa/custom/windSpeedRose"));
 
 // --- 2. EXPORT FOR VERCEL (Crucial) ---
 // Vercel uses this. It does NOT run the code below this line.

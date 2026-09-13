@@ -97,7 +97,7 @@ exports.GoogleSignIn = async (req, res) => {
         accessToken,
         userName: targetUser.FirstName,
       },
-      targetUser.UserId || 2
+      targetUser.UserId
     );
   } catch (err) {
     console.error("Google Login Error:", err);

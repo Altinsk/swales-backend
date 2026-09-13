@@ -126,7 +126,7 @@ exports.verifyEmail = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, rememberMe } = req.body;
   const checkUserEmailSimple = await User.findOne({
     where: { [Op.and]: [{ Email: email }, { loginType: "google" }] },
   });
@@ -152,10 +152,16 @@ exports.login = async (req, res) => {
     user.dataValues.FirstName,
   );
 
+  // "Keep me logged in" unchecked -> no `expires`, so it's a session cookie
+  // the browser drops on close, instead of always issuing the 30-day
+  // persistent cookie regardless of what the checkbox said (its previous
+  // behavior - the control existed in the UI but did nothing).
   res.cookie(
     "token",
     accessToken,
-    sessionCookieOptions(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+    rememberMe
+      ? sessionCookieOptions(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000))
+      : sessionCookieOptions(),
   );
 
   successResponse(

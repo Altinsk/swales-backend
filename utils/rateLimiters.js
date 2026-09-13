@@ -25,3 +25,16 @@ exports.sensitiveActionLimiter = rateLimit({
   legacyHeaders: false,
   handler,
 });
+
+// Public, unauthenticated endpoints with no other limit (the GWA wind-atlas
+// proxy, share-link creation, PDF upload): generous enough that a visitor
+// checking several sites in one session never notices it, tight enough that
+// scripting one of these into a free third-party-API relay or a storage-cost
+// bomb stops being practical.
+exports.publicActionLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler,
+});
