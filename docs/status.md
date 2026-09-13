@@ -7,6 +7,50 @@ left off."
 
 ## Last updated
 
+2026-09-13 (**Field Calculators: COMPLETE — all 26 of 26 calculators
+live** (`290d5cf`), finishing Tier 4 (the last 3). Two are worth
+flagging specifically:
+- **Keyline Plow Line Layout** — research into the actual Yeomans Keyline
+  design method (`WebSearch`/`WebFetch` against the Keyline design
+  literature, including its Wikipedia article) found that plow line
+  spacing has **no calculable formula** — unlike terrace vertical
+  interval, it's purely an equipment/design choice (the cultivation
+  implement's working width), not derived from slope or any site
+  variable. Rather than invent a fake spacing formula to fill the
+  registry slot, reframed the calculator around the one genuinely
+  calculable piece: how many parallel lines (and what total width) a
+  chosen spacing covers across a paddock. Registry title/summary updated
+  from "Keyline Design Spacing Calculator" (implied a formula that
+  doesn't exist) to "Keyline Plow Line Layout Calculator."
+- **Biogas Potential** — yield-per-kg-VS coefficients corroborated across
+  Oklahoma State University Extension and peer-reviewed bioenergy-
+  conversion studies. Takes volatile-solids mass directly as input rather
+  than chaining an uncertain %total-solids x %volatile-solids conversion
+  from raw waste weight, since compounding two separately uncertain
+  figures would produce a falsely precise final number.
+- **Hybrid System Balancer** — pure addition/comparison of solar+wind+
+  hydro daily generation against load; deliberately doesn't recompute
+  each source's own physics, which already lives correctly in the
+  dedicated Solar/Wind/Hydro calculators (avoids two copies of the same
+  math drifting out of sync).
+
+All 3 hand-verified against live output before shipping (biogas
+35.0m³/21.0m³ methane, keyline 67 lines, hybrid 12.0kWh/80%/3.0kWh
+shortfall — all exact). Full production build (310 static pages) clean.
+Hub page confirmed showing zero "Coming soon" badges; `sitemap.xml`
+confirmed with all 26 calculator URLs.
+
+**Field Calculators is now a finished feature**: 26 calculators across 6
+categories (Earthworks & Permaculture, General Agriculture, Vertical
+Farming, Microgreens, Aquaculture & Aquaponics, Energy), each with a
+real/hand-verified formula, an SEO/GEO article (explanatory sections +
+FAQ), and `SoftwareApplication`/`FAQPage` structured data. Nav impact:
+still exactly one "Field Calculators"-equivalent slot in the header
+("Calculators" inside the Tools dropdown) regardless of how many
+calculators exist underneath — the whole point of the nav restructure
+earlier this session. `roadmap_backlog.xlsx` still needs a matching
+status update for this row — not yet done from this environment.)
+
 2026-09-13 (**Field Calculators: all 10 Tier 3 calculators shipped — 23
 of 26 now live** (`8f2d4ad`). The research-heaviest tier — every
 calculator here needed a real published per-crop/species reference, not
