@@ -7,6 +7,22 @@ left off."
 
 ## Last updated
 
+2026-09-14 (**Emptied the rest of `swales-backend/public/uploads/` and
+`uploads/`, added a pre-launch reminder to check both repos again.** Omar
+confirmed the 27 project-thumbnail PNGs left untouched earlier today
+(pending confirmation nothing live referenced them) were also just test
+data and said to empty the whole directory — removed all 27, on top of
+the 161 already removed from the test bank-manual PDF, for 188 files
+total gone from this branch. Also asked for a standing roadmap note:
+before actual launch, empty all test-upload artifacts from both
+`swales-backend` and `swales-designer` again, not just once today.
+Checked `swales-designer` now — no `uploads/`-style folder exists there
+today, `public/objects/` is curated canvas-icon assets, not user uploads
+— but noted to re-check both repos closer to the real cutover date since
+this can recur from ordinary dev/testing. Added as `future-concerns.md`
+item 25 (a "before launch, whenever possible" item, not one of the two
+hard gates) and referenced from `roadmap.md`'s pre-launch checklist.)
+
 2026-09-14 (**Cleared the rest of the 2026-09-14 bug-hunt list: PDF-upload
 caps, share-payload cap, contact-form validation, two report-quality bugs,
 and an honest caveat on the wind IEC classification instead of a guessed

@@ -410,6 +410,22 @@ deferred** that carry real risk if ignored too long.
     documented gust-vs-mean-wind-speed caveat.~~ Done 2026-09-14 — see
     `status.md` and the Resolved entry below.
 
+25. **Before launch: empty all test-upload artifacts from
+    `swales-backend` and check `swales-designer` for the same pattern.**
+    — *Severity: Low, but explicit pre-launch requirement (Omar,
+    2026-09-14).* Prompted by finding a test PDF and 27 test project
+    thumbnails sitting in `swales-backend/public/uploads/` and `uploads/`
+    (removed 2026-09-14, see the Resolved entry below) — the underlying
+    lesson is that anything landing on local disk during dev/testing can
+    end up committed and served publicly, so this needs a real check right
+    before cutover, not just a one-time cleanup today. `swales-designer`
+    was checked 2026-09-14 and has no equivalent `uploads/`-style folder
+    today (its `public/objects/` is curated app assets, not user uploads)
+    — but re-check both repos again closer to the actual launch date in
+    case that's changed. Added to `roadmap.md`'s pre-launch checklist as a
+    "before launch, whenever possible" item (not one of the two hard
+    gates).
+
 ---
 
 ## Resolved
@@ -423,6 +439,14 @@ deferred** that carry real risk if ignored too long.
   (`swales-designer`, `swales-services`) no longer read/write the token via
   `localStorage` or send an `Authorization` header — everything rides the
   cookie via `withCredentials: true`.
+
+- **All 188 test-upload files removed from `swales-backend`** — Done
+  2026-09-14. Confirmed with Omar all of it was test data, not needed:
+  the 161 files from the test bank-manual PDF (already removed earlier
+  the same day) plus the 27 project-thumbnail PNGs that were initially
+  left untouched pending confirmation nothing live referenced them —
+  Omar said to empty the whole `public/uploads/` directory regardless.
+  `uploads/` and `public/uploads/` both gitignored going forward.
 
 - **Six remaining 2026-09-14 bug-hunt findings** — Done 2026-09-14.
   `swales-backend`: `uploadController.js`'s `processPdf` now caps page
