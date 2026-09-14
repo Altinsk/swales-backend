@@ -7,6 +7,37 @@ left off."
 
 ## Last updated
 
+2026-09-14 (**Permaculture Design Courses directory shipped: `swales-services`
+`790801d`, new `/courses` page.** Omar asked for a page listing permaculture
+design courses users could take, "specially the ones that are known and have
+traffic," and asked to see a visual mockup before any code was written — built
+one via the visualize tool matching the site's real Field Calculators visual
+language (white cards, `#e5e7eb` borders, `#16a34a` green accent) before
+starting, then confirmed placement (nav's existing Resources dropdown),
+link behavior (direct external links, no internal detail page), and access
+tier (free/public, not gated) before building for real. Shipped as a new
+registry (`src/lib/courses/registry.js`) + list component
+(`CoursesList.jsx`) + hub page (`/courses/page.js`), same three-piece
+pattern as Field Calculators, with `CollectionPage`/`ItemList` JSON-LD for
+search/AI-answer-engine crawlability. 10 real courses across 4 categories
+(Accredited & university-backed, Well-known online programs, Free &
+introductory, In-person immersions) — Oregon State/edX (Andrew Millison),
+Permaculture Association Britain, Geoff Lawton/PRI (featured/most
+recognized), Milkwood, Permaculture Women's Guild, Regenerative Leadership
+Institute, Permaculture Visions International, Permaculture Principles
+(David Holmgren), Zaytuna Farm on-site PDC, Gaia University — each card
+linking straight to the provider's own site. Verified live in the browser:
+`/courses` renders correctly, matches the Field Calculators hub's visual
+style side-by-side, nav link resolves, no console/server errors beyond the
+expected logged-out `/auth/me` 401. Added `/courses` to Header's Resources
+dropdown and to `sitemap.js`. Committed straight to `swales-services` `main`
+(frontend-only, no schema/backend change, matches repo's existing pattern).
+`roadmap.md`'s Phase D "Permaculture content hub / landing page" row updated
+to reflect this as a partial completion — the broader wiki-style reference-
+content scope that row also covers is still open. Flagged the external-link-
+rot risk in `future-concerns.md` (#23) since none of the 10 provider URLs
+have ongoing verification.)
+
 2026-09-13 (**Permalogica specialized-tier question decided: no LLM build for
 now.** Follow-up to the 2026-09-12 Permalogica research entry below, which
 left one genuine open question after the CAD-export gap was already closed
