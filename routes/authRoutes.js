@@ -26,7 +26,11 @@ router.post("/resend-verification", sensitiveActionLimiter, resendVerification);
 // New Routes
 router.post("/logout", logout);
 router.get("/me", getProfile);
-router.put("/update-profile", updateProfile);
-router.put("/change-password", changePassword);
+router.put("/update-profile", loginLimiter, updateProfile);
+// changePassword checks currentPassword via bcrypt.compare - unlike every
+// other auth-adjacent route here, this one had no rate limit at all, so
+// anyone holding a valid session (stolen token, shared device, XSS) but
+// not the plaintext password could brute-force it unboundedly.
+router.put("/change-password", sensitiveActionLimiter, changePassword);
 
 module.exports = router;
