@@ -35,6 +35,16 @@ class NodeCanvasFactory {
   }
 }
 
+// Both numPages and each page's rendered dimensions previously came
+// straight from attacker-controlled PDF content with no upper bound - the
+// only real limit was the 20MB file-size cap (uploadRoutes.js), which
+// doesn't stop a small, valid PDF from declaring thousands of pages or one
+// page with an enormous /MediaBox. Either one forces large synchronous
+// in-memory canvas allocations in a loop; a handful of concurrent requests
+// (well within this route's rate limit) could exhaust server memory/CPU.
+const MAX_PAGES = 100;
+const MAX_PAGE_DIMENSION_PX = 5000; // longest side, after scaling
+
 exports.processPdf = async (req, res) => {
   // 1. Check for file buffer (since we are using memoryStorage)
   if (!req.file || !req.file.buffer) {
@@ -49,11 +59,28 @@ exports.processPdf = async (req, res) => {
     const pdfDocument = await pdfjs.getDocument({ data: fileData }).promise;
 
     const numPages = pdfDocument.numPages;
+    if (numPages > MAX_PAGES) {
+      return errorResponse(
+        res,
+        `This PDF has ${numPages} pages - the maximum is ${MAX_PAGES}.`,
+        null,
+        400,
+      );
+    }
     const canvasFactory = new NodeCanvasFactory();
 
     for (let i = 1; i <= numPages; i++) {
       const page = await pdfDocument.getPage(i);
-      const viewport = page.getViewport({ scale: 1.5 });
+      // Cap the render scale so no single page's canvas exceeds
+      // MAX_PAGE_DIMENSION_PX on its longest side, regardless of what the
+      // PDF's own /MediaBox declares - normal-sized pages still render at
+      // the usual 1.5x, an oversized one (malicious or a genuinely huge
+      // architectural sheet) gets scaled down instead of erroring or
+      // ballooning memory use.
+      const baseViewport = page.getViewport({ scale: 1 });
+      const largestDimension = Math.max(baseViewport.width, baseViewport.height);
+      const scale = Math.min(1.5, MAX_PAGE_DIMENSION_PX / largestDimension);
+      const viewport = page.getViewport({ scale });
 
       const canvasAndContext = canvasFactory.create(
         viewport.width,
