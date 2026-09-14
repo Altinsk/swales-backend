@@ -7,6 +7,30 @@ left off."
 
 ## Last updated
 
+2026-09-14 (**Removed a test PDF upload committed to git and served
+publicly with no auth.** A full priority-ordered bug-hunting pass across
+all three repos (separate session entry/PR — see the auth-hardening work
+on branch `fix/auth-security-hardening-2026-09-14`) turned up
+`public/uploads/pdf-*-page-*.png` (160 files) and `uploads/<hash>` (a raw
+PDF) sitting in git, served by `server.js`'s `express.static` with zero
+access control. Checked the actual content before doing anything: it's
+one 80-page PDF — Al Rajhi Bank's "AlRajhi E-Commerce Payment Gateway"
+merchant user manual — rendered and uploaded twice about 4 hours apart on
+2025-09-01 (160 page-images = 80 pages x 2 uploads, not one 160-page
+document). Asked Omar to confirm before touching anything destructive;
+confirmed it was just test data from exercising the PDF-upload/
+canvas-background feature, not real content. Removed all 161 files from
+the current tree (`git rm`, not a history purge — that's a separate,
+more destructive step, not asked for) and gitignored `/uploads/` and
+`/public/uploads/` going forward, since the upload pipeline moved to
+`multer.memoryStorage()` + Vercel Blob a while ago and nothing should be
+landing on local disk here again. Committed on
+`chore/remove-test-pdf-upload-2026-09-14`, pushed, not yet merged.
+`future-concerns.md` item 24 added already-resolved with full detail.
+**Left untouched, separate open item**: 27 project-thumbnail PNGs also
+found in the same `public/uploads/` directory — real user canvas-design
+previews, lower severity, not yet reviewed/decided on.)
+
 2026-09-14 (**Permaculture Design Courses directory shipped: `swales-services`
 `790801d`, new `/courses` page.** Omar asked for a page listing permaculture
 design courses users could take, "specially the ones that are known and have

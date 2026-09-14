@@ -402,6 +402,10 @@ deferred** that carry real risk if ignored too long.
     top of `RainAdvisor.jsx` (and now `CropSuitabilityEngine.jsx`) where
     this is flagged inline.
 
+24. ~~**A test PDF upload (a third-party bank's payment-gateway manual)
+    was committed to git and served publicly with no auth.**~~ Done
+    2026-09-14 — see `status.md` and the Resolved entry below.
+
 ---
 
 ## Resolved
@@ -415,3 +419,22 @@ deferred** that carry real risk if ignored too long.
   (`swales-designer`, `swales-services`) no longer read/write the token via
   `localStorage` or send an `Authorization` header — everything rides the
   cookie via `withCredentials: true`.
+
+- **Test PDF upload committed to git, served publicly with no auth** —
+  Done 2026-09-14. Found during a full bug-hunting pass: one 80-page PDF
+  (Al Rajhi Bank's "AlRajhi E-Commerce Payment Gateway" merchant user
+  manual — a third-party document, uploaded once purely to test the
+  PDF-upload/canvas-background feature, not anything Swales-related or
+  containing any real live account's credentials) had been rendered and
+  uploaded twice (2025-09-01, ~4 hours apart), leaving 160 page-PNGs in
+  `public/uploads/` (served by `express.static` with zero access control)
+  plus the raw PDF itself in `uploads/`. Confirmed with Omar this was
+  just test data. Removed all 161 files from the current tree and
+  gitignored `/uploads/` and `/public/uploads/` going forward (the upload
+  pipeline moved to `multer.memoryStorage()` + Vercel Blob a while ago, so
+  nothing should land on local disk here again). Not purged from git
+  history — that's a separate, more destructive step and wasn't asked
+  for; the content is still technically recoverable from older commits.
+  The 27 project-thumbnail PNGs also found in the same directory are a
+  separate, lower-severity, still-open finding (real user canvas-design
+  previews, not yet reviewed) — untouched by this fix.
