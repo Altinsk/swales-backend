@@ -3,3 +3,11 @@ build
 npm-debug.log
 .env
 .DS_Store
+
+# Leftovers from before uploadController.js switched to multer.memoryStorage()
+# + Vercel Blob - local disk is no longer where uploaded PDFs/pages land, so
+# anything that shows up here again is either stale or a regression, not
+# something that belongs in git (public/uploads/ is served with zero auth by
+# server.js's express.static).
+/uploads/
+/public/uploads/
