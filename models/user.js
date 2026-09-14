@@ -40,6 +40,7 @@ module.exports = (sequelize, DataTypes) => {
       loginType: { type: DataTypes.STRING(20), allowNull: true },
       AuthToken: { type: DataTypes.STRING(255), allowNull: true },
       PasswordChangedAt: { type: DataTypes.DATE, allowNull: true },
+      SessionsInvalidatedAt: { type: DataTypes.DATE, allowNull: true },
     },
     {
       sequelize,
