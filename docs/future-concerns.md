@@ -402,6 +402,14 @@ deferred** that carry real risk if ignored too long.
     top of `RainAdvisor.jsx` (and now `CropSuitabilityEngine.jsx`) where
     this is flagged inline.
 
+24. ~~**Six remaining findings from the 2026-09-14 bug hunt**: PDF-upload
+    had no page/dimension cap, the share endpoint had no real size check,
+    contact-form email/subject weren't validated, `reportQAService` ranked
+    incomparable metrics, `combinedReportPdf.js` had a latent normalization
+    gap, and the Extreme Wind Screening's IEC classification lacked a
+    documented gust-vs-mean-wind-speed caveat.~~ Done 2026-09-14 — see
+    `status.md` and the Resolved entry below.
+
 ---
 
 ## Resolved
@@ -415,3 +423,28 @@ deferred** that carry real risk if ignored too long.
   (`swales-designer`, `swales-services`) no longer read/write the token via
   `localStorage` or send an `Authorization` header — everything rides the
   cookie via `withCredentials: true`.
+
+- **Six remaining 2026-09-14 bug-hunt findings** — Done 2026-09-14.
+  `swales-backend`: `uploadController.js`'s `processPdf` now caps page
+  count at 100 and clamps every page's render scale so no canvas exceeds
+  5000px on its longest side (scales down instead of erroring on a
+  genuinely large page); `shareController.js`'s `createShare` now rejects
+  a payload over 5MB (the stale comment in `shareRoutes.js` claiming this
+  already existed is now actually true); `contactController.js` now
+  validates email format and rejects CR/LF in email/subject before they
+  reach `emailService.js`'s `replyTo`/`subject` fields. `swales-services`:
+  `reportQAService.answerOverallSuitability` no longer ranks Contour
+  Analysis's swale/building percent-of-area figures alongside Solar/Wind's
+  0-100 composite scores (a land-classification percentage isn't a
+  suitability score) — reported separately instead, with the reasoning
+  stated in the answer text; `combinedReportPdf.js`'s `altitudeData.weather`
+  now uses the same normalized precipitation value its neighbor line
+  already did. **Not fully resolved, documented instead**: the Extreme
+  Wind Screening's IEC classification compares a 10m instantaneous-gust V50
+  against IEC 61400-1's 10-minute-mean-at-hub-height standard — the actual
+  fix (a proper gust-factor conversion) needs a specific factor decision
+  Omar hasn't made, so this just adds an explicit caveat
+  (`extremeWindEngine.js`'s header comment + the dashboard's info tooltip)
+  that the reported class should be read as a conservative upper bound,
+  not a literal mean-wind-speed classification, instead of silently
+  picking a conversion factor.

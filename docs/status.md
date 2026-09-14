@@ -7,6 +7,64 @@ left off."
 
 ## Last updated
 
+2026-09-14 (**Cleared the rest of the 2026-09-14 bug-hunt list: PDF-upload
+caps, share-payload cap, contact-form validation, two report-quality bugs,
+and an honest caveat on the wind IEC classification instead of a guessed
+fix.** Omar said "go ahead" on the remaining lower-priority findings after
+the auth hardening, the test-PDF removal, and the Solar/Wind demand-table
+fix were already done.
+
+`swales-backend` (branch `fix/upload-share-contact-hardening-2026-09-14`):
+`uploadController.js`'s `processPdf` had no cap on PDF page count or
+per-page rendered dimensions, both coming straight from
+attacker-controlled PDF content — added a 100-page cap (rejects the whole
+upload above it) and a 5000px-longest-side render-scale cap (scales a page
+down instead of erroring, so a genuinely large-format site plan still
+works instead of just failing). `shareController.js`'s `createShare` had
+no size check of its own despite `shareRoutes.js`'s comment claiming one
+existed — added a real 5MB cap (had to stringify `projectData` first
+since it arrives as a parsed object, not a string — `Buffer.byteLength`
+on the raw object would have thrown on every single request, caught this
+before shipping) and fixed the now-accurate comment. `contactController.js`
+didn't validate email format or reject CR/LF in `email`/`subject` before
+they flow into `emailService.js`'s real `replyTo`/`subject` header fields
+on the outbound email — added both checks.
+
+`swales-services` (`main`, `db8c65b`): `reportQAService.js`'s
+`answerOverallSuitability` sorted Solar/Wind's 0-100 composite suitability
+scores in the same ranked list as Contour Analysis's swale/building
+percent-of-area figures — a land-classification percentage, not a
+suitability score (a site where 90% of a small drawn rectangle happened
+to be swale-suitable terrain could out-rank a genuinely strong 70/100
+solar score). Now only genuine suitability scores are ranked; the area
+percentages are reported separately in the answer text, with the reason
+they aren't ranked stated explicitly. `combinedReportPdf.js`'s
+`altitudeData.weather` used the raw (possibly `_fetchFailed`)
+precipitation fetch while the line directly above it already normalizes
+that same value for the precipitation section — now both use the
+normalized value.
+
+**Deliberately not "fixed" the same way — documented instead**: the
+Extreme Wind Screening's IEC turbine classification
+(`extremeWindEngine.js`) compares a 10m instantaneous-gust V50 against
+IEC 61400-1's reference table, which is formally defined for the
+10-minute-mean wind speed at hub height. Gusts run higher than 10-min
+means, so this likely over-states the required turbine class. The actual
+fix is a gust-factor conversion (~1.4-1.6x per IEC/ESDU literature,
+depending on terrain/averaging time) — picking a specific factor is a
+real methodology decision, not something to invent silently the way two
+interpolated demand-table numbers almost got presented as researched
+earlier today (see the entry below and
+[[feedback_researched_figures_not_interpolated_guesses]] in memory).
+Added an explicit caveat instead, in both `extremeWindEngine.js`'s header
+comment and the Wind Dashboard's info tooltip: read the reported class as
+a conservative upper bound, not a literal mean-wind-speed classification,
+until Omar decides on a conversion factor.
+
+`future-concerns.md` item 24 (this branch's numbering) added
+already-resolved with full detail. `swales-services` build verified clean
+after each change.)
+
 2026-09-14 (**Permaculture Design Courses directory shipped: `swales-services`
 `790801d`, new `/courses` page.** Omar asked for a page listing permaculture
 design courses users could take, "specially the ones that are known and have
