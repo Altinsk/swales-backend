@@ -1,8 +1,9 @@
 const { successResponse, errorResponse } = require("../utils/responseHelper");
 const { Subscriber } = require("../models");
+const normalizeEmail = require("../utils/normalizeEmail");
 
 exports.subscribeEmail = async (req, res) => {
-  const { email } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!email) {
     return errorResponse(res, "Email is required.", null, 400);
   }
