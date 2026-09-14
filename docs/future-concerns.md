@@ -349,6 +349,22 @@ deferred** that carry real risk if ignored too long.
     obviously broken like the two above, but the product claim itself
     hasn't been verified as real.
 
+23. **`/courses` links to third-party sites Swales doesn't control.** —
+    *Severity: Low.* Flagged 2026-09-14 when the page shipped
+    (`swales-services` `790801d`, see `status.md`). Every card on the new
+    Permaculture Design Courses directory links to an external provider
+    (Oregon State/edX, Geoff Lawton/PRI, Milkwood, Permaculture Women's
+    Guild, Regenerative Leadership Institute, Permaculture Visions,
+    Permaculture Association Britain, Permaculture Principles, Gaia
+    University) — none were verified as still-live/still-accurate beyond
+    the initial build, so a provider rebranding, changing its URL
+    structure, or shutting down a course would silently leave a dead or
+    stale link on the page. No automated link-checking exists yet.
+    Recommend a periodic (quarterly is probably enough at this traffic
+    level) manual click-through, or a simple scheduled link-checker
+    against the URLs in `swales-services/src/lib/courses/registry.js`,
+    before this page gets meaningful traffic of its own.
+
 ### Monetization / access control
 
 19. **Specialized Data Package ($159 one-time) has no automated payment or

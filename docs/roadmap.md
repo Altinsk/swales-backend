@@ -246,7 +246,7 @@ necessarily editable) from both places.
 | Books and magazines library | List B | both | Could | — |
 | Resources library | List B | both | Could | Overlaps books_magazines — consider one unified library section. |
 | Ideas (inspiration gallery) | List B | both | Could | Overlaps design_gallery below — merge if possible. |
-| "Permaculture" content hub / landing page | List B | both | Could | — |
+| "Permaculture" content hub / landing page | List B | both | Could | **Partially done, 2026-09-14** — the courses-directory slice shipped as `/courses` on `swales-services` (`790801d`): a curated directory of real permaculture design courses (Oregon State/edX, Permaculture Association Britain, Geoff Lawton/PRI, Milkwood, Permaculture Women's Guild, Regenerative Leadership Institute, Permaculture Visions, Zaytuna Farm, Gaia University), grouped by category, each card linking straight to the provider's own site. Same visual/architectural pattern as the Field Calculators hub (registry file + list component + hub page), free/public, no sign-up, kept separate from the gated advisors per `feedback_keep_free_tools_separate_from_gated`. Linked from Header's existing Resources dropdown; added to the sitemap. The broader "content hub" scope (wiki-style permaculture reference content) this row originally covered is still open. |
 | Design library / public gallery | List A – Phase 5 / List B – Design | both | Should | Needs real user designs to populate — sequence after Phase B/C produce some. |
 | Templates (UK garden, homestead, agroforestry) | List A – Phase 5 | web | Should | — |
 | Usability & onboarding (beginner mode) | List A – #8 | both | Must | Don't skip this — it's explicitly why MyPermagarden beats Swales today on ease of entry. |
