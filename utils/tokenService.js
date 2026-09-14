@@ -59,6 +59,14 @@ exports.assertSessionValid = (token, user) => {
   if (user.IsBlackListed) {
     throw new Error("Account access revoked");
   }
+  // Same gap IsBlackListed had before the check above was added: the
+  // IsDeleted column exists (models/user.js, the base migration) but
+  // nothing anywhere reads it. Unexploitable today since no soft-delete
+  // endpoint sets it yet, but the moment one ships, every session for that
+  // account would otherwise keep working exactly as before.
+  if (user.IsDeleted) {
+    throw new Error("Account no longer exists");
+  }
   if (user.PasswordChangedAt) {
     const { iat } = jwt.decode(token);
     if (iat * 1000 < new Date(user.PasswordChangedAt).getTime()) {

@@ -75,7 +75,8 @@ exports.createProject = async (req, res) => {
     });
     successResponse(res, "Project saved successfully", project);
   } catch (err) {
-    errorResponse(res, err.message, err, 500);
+    console.error("createProject error:", err);
+    errorResponse(res, "Failed to save project", err, 500);
   }
 };
 exports.getProjects = async (req, res) => {
@@ -121,22 +122,31 @@ exports.getProjects = async (req, res) => {
         break;
     }
 
-    if (!limit || (limit && page > 1)) {
-      const pageSize = 10;
-      const offset = (parseInt(page, 10) - 1) * pageSize;
+    // parseInt(...) || fallback guards both branches against a malformed
+    // page/limit (e.g. ?page=abc) reaching Postgres as OFFSET NaN, which
+    // previously errored out and leaked the raw DB error message below.
+    const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+    const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+
+    if (!limit || (limit && parsedPage > 1)) {
+      const offset = (parsedPage - 1) * parsedLimit;
 
       const { count, rows } = await Project.findAndCountAll({
         where: whereClause,
         order: orderClause,
         attributes: ["ProjectId", "Name", "DateLastUpdated", "ThumbnailUrl"],
-        limit: pageSize,
+        // Was hardcoded to 10 regardless of what the caller actually asked
+        // for via ?limit=, silently dropping it whenever page>1 was also
+        // given (the only case that reaches this branch with a caller-
+        // supplied limit at all).
+        limit: parsedLimit,
         offset,
       });
 
       return successResponse(res, "Projects fetched successfully", {
         projects: rows,
-        totalPages: Math.ceil(count / pageSize),
-        currentPage: parseInt(page, 10),
+        totalPages: Math.ceil(count / parsedLimit),
+        currentPage: parsedPage,
         totalCount: count,
       });
     } else {
@@ -144,12 +154,13 @@ exports.getProjects = async (req, res) => {
         where: whereClause,
         order: orderClause,
         attributes: ["ProjectId", "Name", "DateLastUpdated", "ThumbnailUrl"],
-        limit: parseInt(limit, 10),
+        limit: parsedLimit,
       });
       return successResponse(res, "Projects fetched successfully", projects);
     }
   } catch (err) {
-    errorResponse(res, err.message, err, 500);
+    console.error("getProjects error:", err);
+    errorResponse(res, "Failed to fetch projects", err, 500);
   }
 };
 
@@ -172,7 +183,8 @@ exports.getProjectById = async (req, res) => {
     }
     successResponse(res, "Project data fetched successfully", project);
   } catch (err) {
-    errorResponse(res, err.message, err, 500);
+    console.error("getProjectById error:", err);
+    errorResponse(res, "Failed to fetch project", err, 500);
   }
 };
 
@@ -203,7 +215,8 @@ exports.updateProject = async (req, res) => {
     await project.save();
     successResponse(res, "Project updated successfully", project);
   } catch (err) {
-    errorResponse(res, err.message, err, 500);
+    console.error("updateProject error:", err);
+    errorResponse(res, "Failed to update project", err, 500);
   }
 };
 
@@ -228,6 +241,7 @@ exports.deleteProject = async (req, res) => {
 
     successResponse(res, "Project deleted successfully");
   } catch (err) {
-    errorResponse(res, err.message, err, 500);
+    console.error("deleteProject error:", err);
+    errorResponse(res, "Failed to delete project", err, 500);
   }
 };

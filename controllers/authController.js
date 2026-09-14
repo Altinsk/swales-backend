@@ -55,7 +55,19 @@ exports.register = async (req, res) => {
     await sendVerificationEmail(user.Email, token, src);
     successResponse(res, `User registered, check email for verification`);
   } catch (err) {
-    errorResponse(res, err.message, err, 500);
+    // The findOne-then-create above isn't atomic: two concurrent
+    // registrations for the same new email (a double-submit, a client
+    // retry) can both pass the "does this exist" check before either
+    // commits. The DB's own unique constraint on Users.Email stops an
+    // actual duplicate row, but the losing request used to fall through to
+    // the generic err.message path below - a raw SequelizeUniqueConstraintError
+    // message sent to the client instead of the same graceful "User
+    // already exists" response the code already gives for the non-race case.
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return errorResponse(res, "User already exists", null, 200);
+    }
+    console.error("Register error:", err);
+    errorResponse(res, "Failed to register user", err, 500);
   }
 };
 

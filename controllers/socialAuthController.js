@@ -106,6 +106,14 @@ exports.GoogleSignIn = async (req, res) => {
     );
   } catch (err) {
     console.error("Google Login Error:", err);
-    errorResponse(res, err.message, err, 500);
+    // Same check-then-act race as register() (authController.js): a
+    // concurrent Google sign-in for the same new email can hit the DB's
+    // unique constraint on Users.Email after the findOne above already
+    // returned null for both. Give the same graceful response instead of
+    // a raw DB error message.
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return errorResponse(res, "An account with this email already exists. Please try again.", null, 409);
+    }
+    errorResponse(res, "Google sign-in failed", err, 500);
   }
 };
