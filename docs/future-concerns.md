@@ -434,6 +434,12 @@ deferred** that carry real risk if ignored too long.
     "before launch, whenever possible" item (not one of the two hard
     gates).
 
+    (Note: an earlier, narrower version of this same finding — just the
+    161-file test-PDF removal, before Omar asked for the full
+    `public/uploads/` cleanup — was tracked as its own item on the
+    `chore/remove-test-pdf-upload-2026-09-14` branch. Superseded by the
+    fuller item above; not duplicated here.)
+
 ---
 
 ## Resolved
