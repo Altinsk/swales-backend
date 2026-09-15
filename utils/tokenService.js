@@ -18,9 +18,13 @@ exports.sessionCookieOptions = (expires) => ({
   ...(expires ? { expires } : {}),
 });
 
-exports.generateToken = async (email, firstName) => {
+// `expiresIn` defaults to the "remembered" 30-day lifetime; login passes a
+// short-lived value when the user left "remember me" unchecked, so a token
+// that leaks off the browser (the cookie itself already dies on browser
+// close in that case) is only ever usable for a day, not the full 30.
+exports.generateToken = async (email, firstName, expiresIn = "30d") => {
   return jwt.sign({ email, firstName }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
+    expiresIn,
   });
 };
 exports.generateResetToken = async (email) => {
@@ -29,8 +33,11 @@ exports.generateResetToken = async (email) => {
 exports.verifyToken = async (token) => {
   return jwt.verify(token, process.env.JWT_SECRET).email;
 };
+// Returns `iat` too (not just email) - resetPassword needs it to detect
+// reuse of an already-consumed reset link, see assertResetTokenFresh below.
 exports.verifyResetToken = async (token) => {
-  return jwt.verify(token, process.env.RESET_SECRET).email;
+  const decoded = jwt.verify(token, process.env.RESET_SECRET);
+  return { email: decoded.email, iat: decoded.iat };
 };
 
 // Email-verification links previously carried a full generateToken() -
@@ -72,5 +79,33 @@ exports.assertSessionValid = (token, user) => {
     if (iat * 1000 < new Date(user.PasswordChangedAt).getTime()) {
       throw new Error("Session invalidated by a more recent password change");
     }
+  }
+  // Same shape of check, for explicit logout instead of a password change -
+  // see the SessionsInvalidatedAt migration's comment for why logout used to
+  // do nothing server-side (only cleared the cookie) and what this closes.
+  if (user.SessionsInvalidatedAt) {
+    const { iat } = jwt.decode(token);
+    if (iat * 1000 < new Date(user.SessionsInvalidatedAt).getTime()) {
+      throw new Error("Session invalidated by logout");
+    }
+  }
+};
+
+// A reset token is a bare JWT with no server-side "used" flag, so anyone who
+// gets hold of a valid reset link (forwarded, cached by a mail provider,
+// auto-clicked by a corporate security scanner, browser history) can reuse
+// it as many times as they like inside its 15-minute window. This closes
+// that for free by reusing PasswordChangedAt, which a successful reset
+// already bumps: the first use succeeds and sets PasswordChangedAt to now,
+// so any token issued before that (a lower `iat`, including the same token
+// replayed) is rejected on every subsequent attempt - the exact invariant
+// assertSessionValid already enforces for login sessions, applied here to
+// the reset flow itself.
+exports.assertResetTokenFresh = (tokenIat, user) => {
+  if (
+    user.PasswordChangedAt &&
+    tokenIat * 1000 < new Date(user.PasswordChangedAt).getTime()
+  ) {
+    throw new Error("This reset link has already been used");
   }
 };

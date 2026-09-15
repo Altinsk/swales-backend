@@ -13,12 +13,14 @@ const {
   verifyToken,
   verifyResetToken,
   assertSessionValid,
+  assertResetTokenFresh,
   generateEmailVerifyToken,
   verifyEmailVerifyToken,
   sessionCookieOptions,
 } = require("../utils/tokenService");
 const { Op } = require("sequelize");
 const normalizeEmail = require("../utils/normalizeEmail");
+const { isValidPassword, PASSWORD_HINT } = require("../utils/passwordPolicy");
 
 exports.register = async (req, res) => {
   const { firstName, lastName, password, dateOfBirth, src } = req.body;
@@ -36,6 +38,8 @@ exports.register = async (req, res) => {
   let ExistingUser = await User.findOne({ where: { Email: email } });
   if (ExistingUser)
     return errorResponse(res, "User already exists", "Duplicate Email", 200);
+  if (!isValidPassword(password))
+    return errorResponse(res, PASSWORD_HINT, null, 400);
   const salt = await bcrypt.genSalt(10);
   const hash = await bcrypt.hash(password, salt);
   try {
@@ -154,18 +158,33 @@ exports.login = async (req, res) => {
       401,
     );
   const user = await User.findOne({ where: { Email: email } });
-  if (!user) return errorResponse(res, "User doesn't exist.", null, 401);
+  // "No such user" and "wrong password" used to be two distinguishable
+  // messages - the classic login-enumeration vector (an attacker can bulk-
+  // check which emails are registered without ever needing a real
+  // password), and inconsistent with forgotPassword's deliberately generic
+  // response just above. Both now return the same message; email-verified
+  // and Google-account status still get their own messages since knowing
+  // "this email needs Google sign-in" or "check your inbox" is real,
+  // low-risk UX value for a legitimate user who already knows the account
+  // exists (they're looking at their own login form).
+  if (!user) return errorResponse(res, "Invalid email or password.", null, 401);
 
   if (!user.Verified)
     return errorResponse(res, "Please verify your email first.", null, 401);
 
   if (!(await bcrypt.compare(password, user.PasswordHash)))
-    return errorResponse(res, "Invalid credentials", null, 401);
+    return errorResponse(res, "Invalid email or password.", null, 401);
   await User.update({ DateLastLogin: new Date() }, { where: { Email: email } });
 
+  // "Keep me logged in" unchecked now shortens the token's own lifetime
+  // too, not just the cookie's persistence - previously every token was a
+  // full 30 days regardless, so a token that leaked off the browser (copied
+  // cookie value, compromised machine) outlived the "session-only" cookie
+  // wrapping it by a huge margin.
   const accessToken = await generateToken(
     user.Email,
     user.dataValues.FirstName,
+    rememberMe ? "30d" : "1d",
   );
 
   // "Keep me logged in" unchecked -> no `expires`, so it's a session cookie
@@ -189,6 +208,26 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
+  // Previously this only cleared the client's cookie - a token that existed
+  // outside the browser's cookie jar at logout time (copied cookie value,
+  // compromised machine, a synced/backed-up cookie jar) stayed fully valid
+  // for the rest of its life even though the user believed they'd logged
+  // out. Bumping SessionsInvalidatedAt closes that: assertSessionValid now
+  // rejects any token issued before it. Note this invalidates every session
+  // for the account, not just this one device/tab - there's no per-session
+  // tracking in this schema to scope it more narrowly. Best-effort: if the
+  // request has no valid session to identify (already expired/missing
+  // token), still clear the cookie and succeed rather than error - logging
+  // out of a session that's already unusable should never fail.
+  try {
+    const user = await getUserIdFromRequest(req);
+    await User.update(
+      { SessionsInvalidatedAt: new Date() },
+      { where: { UserId: user.UserId } },
+    );
+  } catch (error) {
+    // No-op: nothing to invalidate for a request with no valid session.
+  }
   res.clearCookie("token", sessionCookieOptions());
   successResponse(res, "Logged out");
 };
@@ -216,7 +255,14 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
   try {
-    const email = await verifyResetToken(token);
+    const { email, iat } = await verifyResetToken(token);
+    if (!isValidPassword(newPassword))
+      return errorResponse(res, PASSWORD_HINT, null, 400);
+    const user = await User.findOne({ where: { Email: email } });
+    if (!user) throw new Error("Invalid or expired token");
+    // Rejects replay of an already-consumed reset link - see
+    // assertResetTokenFresh's comment in tokenService.js.
+    assertResetTokenFresh(iat, user);
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(newPassword, salt);
     await User.update(
@@ -334,6 +380,9 @@ exports.changePassword = async (req, res) => {
     if (!isMatch) {
       return errorResponse(res, "Incorrect current password", null, 400);
     }
+
+    if (!isValidPassword(newPassword))
+      return errorResponse(res, PASSWORD_HINT, null, 400);
 
     // 2. Hash New Password
     const salt = await bcrypt.genSalt(10);

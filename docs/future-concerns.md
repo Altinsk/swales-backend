@@ -402,7 +402,117 @@ deferred** that carry real risk if ignored too long.
     top of `RainAdvisor.jsx` (and now `CropSuitabilityEngine.jsx`) where
     this is flagged inline.
 
-24. ~~**Second full bug-hunting pass (2026-09-15), all findings fixed
+### Security (continued)
+
+24. **187 old uploaded PDF-page images (plus one raw source PDF) are
+    committed to git and served publicly with no auth.** — *Severity:
+    Medium — depends entirely on whether any of that content is
+    sensitive.* Found 2026-09-14 during a full bug-hunting pass:
+    `swales-backend/public/uploads/pdf-*-page-*.png` (187 files) is served
+    by `express.static` (`server.js`) with zero access control, and
+    `swales-backend/uploads/<hash>` (an 80-page PDF) sits outside the
+    served tree but is still permanently in git history. Both are leftovers
+    from before `uploadController.js` moved to `multer.memoryStorage()` +
+    Vercel Blob (see the comment at the top of `routes/uploadRoutes.js`).
+    **Not fixed in this pass** — removing files from git history is a
+    destructive, hard-to-reverse operation and wasn't done without
+    confirming first whether the actual content is sensitive. Next step:
+    Omar reviews what's actually in those files, then either a simple
+    `git rm` (if going-forward removal is enough) or a full history purge
+    (if the content itself needs to stop existing anywhere), plus
+    gitignoring `uploads/`/`public/uploads/` either way.
+
+25. **PDF-upload endpoint (`POST /api/upload/pdf`) has no page-count or
+    page-dimension cap.** — *Severity: Medium.* Found 2026-09-14. Both
+    `numPages` and each page's rendered canvas size come straight from
+    attacker-controlled PDF content with no upper bound — only the 20MB
+    file-size cap and the 40-req/5-min rate limit apply. A small, valid PDF
+    declaring thousands of pages or one huge page forces large synchronous
+    in-memory canvas allocations in a loop; a handful of concurrent
+    requests (well within the rate limit) can exhaust server memory/CPU.
+    Fix direction: cap `numPages` and reject pages above a sane
+    width/height before rendering, in `controllers/uploadController.js`'s
+    `processPdf`. Not fixed in this pass — needs a threshold decision
+    (what's a legitimate max page count for a garden-design reference PDF)
+    rather than an arbitrary number picked blind.
+
+26. **`shareController`'s create-share endpoint is fully unauthenticated,
+    unvalidated, and never expires.** — *Severity: Low-medium.* Found
+    2026-09-14. `createShare` stores whatever `projectData` blob is posted
+    with only a truthiness check — no size/schema validation, no owner, no
+    expiry or deletion path anywhere in `shareController.js` or the `Share`
+    model. Functionally usable as an anonymous, rate-limited (40/5min/IP)
+    "paste bin" for arbitrary content, retrievable forever via
+    `GET /api/shares/:uuid`. Not currently exploited, but worth a size cap
+    and/or an expiry column if abuse ever shows up. A stale comment in
+    `routes/shareRoutes.js` also references "createShare's own size check"
+    which doesn't exist — worth fixing the comment regardless of whether a
+    real cap gets added.
+
+27. **Contact-form email/subject fields aren't format-validated before
+    use as email headers.** — *Severity: Low, low confidence.*
+    Found 2026-09-14. `contactController.js` only checks
+    truthiness of `name`/`email`/`message`; the raw values flow into
+    `emailService.js` as `replyTo`/`subject` fields on a real outbound
+    email via the Resend SDK. The HTML body is properly escaped
+    (`escapeHtml`) — only the header-like fields aren't. Likely low risk in
+    practice since Resend's structured JSON API probably rejects/strips
+    control characters, but not independently verified either way.
+
+### Advisory engine correctness
+
+28. **Solar and Wind maintain separate, drifted copies of the annual
+    energy-demand-by-category table.** — *Severity: High — gives users
+    contradictory answers from the same input.* Found 2026-09-14:
+    `swales-services/src/services/solarService.js`'s `ANNUAL_DEMAND_KWH`
+    and `swales-services/src/lib/wind/windCalculationEngine.js`'s table of
+    the same name disagree for `business` (25,000 vs 50,000 kWh/yr — 2x)
+    and `industrial` (3,000,000 vs 250,000 kWh/yr — 12x). The same site pin
+    gets a wildly different coverage/verdict from Solar vs. Wind for the
+    same category. `windService.js` already fixed this exact anti-pattern
+    for `HUB_HEIGHTS` (imported from `windCalculationEngine` specifically
+    "so the two can't silently drift apart") — `ANNUAL_DEMAND_KWH` never
+    got the same treatment. **Not fixed in this pass**: unifying the
+    source is mechanical, but which numbers are actually right is a
+    domain-judgment call for Omar to confirm, not something to pick
+    silently.
+
+29. **`reportQAService.answerOverallSuitability` ranks heterogeneous
+    scores as if directly comparable.** — *Severity: Medium.* Found
+    2026-09-14: `reportQAService.js` sorts Solar suitability (0-100
+    composite), Wind suitability (0-100 composite), and swale/building
+    percent-of-analyzed-area (a raw area percentage, different scale
+    entirely) in one array and calls the top one "this site's strongest
+    signal" — e.g. 90% of a small drawn rectangle happening to be
+    swale-suitable can out-rank a genuinely strong 70/100 solar score.
+    Needs real normalization before the four metrics can be compared, not
+    yet done.
+
+30. **`combinedReportPdf.js` skips a normalization step its neighbor line
+    applies.** — *Severity: Low, currently harmless.* Found 2026-09-14:
+    line ~208 passes the raw (possibly `_fetchFailed`) precipitation fetch
+    into `altitudeData.weather`, while the line just above it correctly
+    nulls that sentinel out for the precipitation section itself. Doesn't
+    currently misfire because every field on the `_fetchFailed` sentinel
+    happens to fail `buildWeatherInsights`'s thresholds — but it's latent,
+    and would misfire if that sentinel's shape ever changed.
+
+31. **Extreme-wind IEC turbine classification may compare the wrong wind
+    statistic against the standard.** — *Severity: Medium, methodological
+    — needs a read, not a blind fix.* Found 2026-09-14:
+    `windExtremeService.js` fits a Gumbel distribution to annual-maximum
+    daily *gusts* at 10m, then classifies the resulting V50 against IEC
+    61400-1's Class I/II/III table, which is formally defined as a 10-min
+    *mean* wind speed at *hub height*. Gusts run systematically higher than
+    10-min means, so this likely overstates the required turbine class
+    (recommending a more expensive turbine than necessary) — or, if gust
+    loading was the actual intent, it's mislabeled against the wrong
+    standard's units. Unlike every other cross-source unit reconciliation
+    in this codebase, there's no comment here explaining the choice, which
+    is conspicuous. Needs a decision on what the feature is actually
+    supposed to model before fixing.
+
+32. ~~**Second full bug-hunting pass (2026-09-15), all findings fixed
     same day**: Google Sign-In DB error, rate-limiter budget sharing,
     two map staleness-guard gaps, a Sun Tracker stale closure, two
     auth-loading-flash gaps, a required-field gap, a designer
@@ -423,6 +533,33 @@ deferred** that carry real risk if ignored too long.
   (`swales-designer`, `swales-services`) no longer read/write the token via
   `localStorage` or send an `Authorization` header — everything rides the
   cookie via `withCredentials: true`.
+
+- **8 auth/session-security gaps found by a 2026-09-14 full-codebase audit**
+  — Done same day, see `status.md`'s 2026-09-14 entry for full detail on
+  each: (1) rate limiting was non-functional on Vercel (no `trust proxy`,
+  every request shared one bucket) — fixed with `app.set("trust proxy", 1)`
+  in `server.js`; (2) password complexity was client-side only — added
+  `utils/passwordPolicy.js`, enforced in `register`/`resetPassword`/
+  `changePassword`; (3) login enabled user enumeration via 4 distinguishable
+  error messages — "no such user" and "wrong password" now return one
+  generic message (Google-account/unverified messages kept, low
+  enumeration value, real UX value); (4) password-reset tokens had no
+  single-use enforcement — closed via `assertResetTokenFresh` in
+  `tokenService.js`, reusing the `PasswordChangedAt` bump a successful
+  reset already does; (5) logout didn't invalidate the session
+  server-side, only cleared the cookie — added a `SessionsInvalidatedAt`
+  column (migration `20260914010000`) checked the same way
+  `PasswordChangedAt` already is (note: this invalidates every session for
+  the account, not just the current device — no per-session tracking
+  exists to scope it narrower); (6) "remember me" unchecked still issued a
+  full 30-day token, only the cookie's persistence changed — `generateToken`
+  now takes an `expiresIn` and login passes `"1d"` when unchecked; (7)
+  bearer token returned in the login response body on every web call, not
+  gated to mobile — reviewed, left as-is since mobile needs it and neither
+  web frontend persists it; (8) `swales-designer`'s `AuthContext` was
+  missing the `else { setUser(null) }` branch `swales-services`' already
+  has for a `200 {success:false}` response — added. Both frontends' builds
+  verified clean after the fix.
 
 - **Second full bug-hunting pass (2026-09-15) — all findings fixed same
   day.** Full detail in `status.md`. Summary: `Users.AuthToken` widened

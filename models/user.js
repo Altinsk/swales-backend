@@ -44,6 +44,7 @@ module.exports = (sequelize, DataTypes) => {
       // never read back - no reason to bound its length at all.
       AuthToken: { type: DataTypes.TEXT, allowNull: true },
       PasswordChangedAt: { type: DataTypes.DATE, allowNull: true },
+      SessionsInvalidatedAt: { type: DataTypes.DATE, allowNull: true },
     },
     {
       sequelize,
