@@ -402,7 +402,15 @@ deferred** that carry real risk if ignored too long.
     top of `RainAdvisor.jsx` (and now `CropSuitabilityEngine.jsx`) where
     this is flagged inline.
 
-24. ~~**A test PDF upload (a third-party bank's payment-gateway manual)
+24. ~~**Second full bug-hunting pass (2026-09-15), all findings fixed
+    same day**: Google Sign-In DB error, rate-limiter budget sharing,
+    two map staleness-guard gaps, a Sun Tracker stale closure, two
+    auth-loading-flash gaps, a required-field gap, a designer
+    constant-drift risk, a designer stale-fetch gap, and 13 blog posts
+    needing de-duplication/cleanup.~~ Done 2026-09-15 — see `status.md`
+    and the Resolved entry below.
+
+25. ~~**A test PDF upload (a third-party bank's payment-gateway manual)
     was committed to git and served publicly with no auth.**~~ Done
     2026-09-14 — see `status.md` and the Resolved entry below.
 
@@ -437,4 +445,31 @@ deferred** that carry real risk if ignored too long.
   for; the content is still technically recoverable from older commits.
   The 27 project-thumbnail PNGs also found in the same directory are a
   separate, lower-severity, still-open finding (real user canvas-design
-  previews, not yet reviewed) — untouched by this fix.
+  previews, not yet reviewed) — untouched by this fix. **Update, later
+  the same day**: Omar confirmed the 27 thumbnails were also just test
+  data and asked to empty the whole directory — see the
+  `fix/upload-share-contact-hardening-2026-09-14` branch/PR, which
+  removed them (this branch's own 161-file removal is a subset of that
+  later, more complete cleanup).
+
+- **Second full bug-hunting pass (2026-09-15) — all findings fixed same
+  day.** Full detail in `status.md`. Summary: `Users.AuthToken` widened
+  from `VARCHAR(255)` to `TEXT` (a real Google id_token always exceeded
+  the old limit, breaking every Google sign-in); `loginLimiter`/
+  `sensitiveActionLimiter` converted from shared singletons to
+  per-route factory functions (they were combining unrelated routes'
+  rate-limit budgets); added a per-user rate limit to authenticated
+  project-save routes; added format validation to the contact form and
+  newsletter signup (`utils/emailFormat.js`); `swales-services`'
+  `MapComponent.jsx` gained fetchId staleness guards on its two
+  unguarded fetches (location/geocode panel, altitude overlay); fixed
+  a Sun Tracker stale-closure bug (date/time customization silently
+  reverting on the next pin move); fixed a false "please sign in" flash
+  on Compare and Specialized Reports for already-signed-in users; made
+  Specialized Reports' "which site?" field required; `swales-designer`
+  got a shared `canvasConstants.ts` for `PIXELS_PER_METER` (was
+  duplicated as a bare `40`) and a stale-fetch guard on
+  `AllGardensModal.tsx`; 13 blog posts were de-duplicated, deleted, or
+  had off-topic/brand-impersonation content removed (same defect class
+  as the earlier pest-control-post fix, found to recur more widely on
+  a broader sample).

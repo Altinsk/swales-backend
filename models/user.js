@@ -38,7 +38,11 @@ module.exports = (sequelize, DataTypes) => {
       IsBlackListed: { type: DataTypes.BOOLEAN, defaultValue: false },
       IsDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
       loginType: { type: DataTypes.STRING(20), allowNull: true },
-      AuthToken: { type: DataTypes.STRING(255), allowNull: true },
+      // Widened from STRING(255) to TEXT - a real Google id_token JWT
+      // (~342+ characters minimum) always exceeded the old 255-char limit,
+      // making every Google sign-in throw a DB error. Write-only bookkeeping,
+      // never read back - no reason to bound its length at all.
+      AuthToken: { type: DataTypes.TEXT, allowNull: true },
       PasswordChangedAt: { type: DataTypes.DATE, allowNull: true },
     },
     {
