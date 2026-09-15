@@ -126,8 +126,9 @@ All three `swales-services`/`swales-designer` builds re-verified clean
 (`exit 0`) after their respective fixes. Backend changes syntax-checked
 (`node --check`, all clean) but the new migration not run against a live
 database from this session — goes through the normal PR/Neon-branch flow.
-`future-concerns.md` item 32 and its Resolved-section counterpart added
+`future-concerns.md` item 24 and its Resolved-section counterpart added
 with full detail.)
+
 
 2026-09-14 (**Full priority-ordered bug-hunting pass across all three repos,
 plus 8 auth/session-security fixes.** Omar asked for a full deep-search bug
@@ -262,6 +263,122 @@ identical; `swales-designer`'s auth (cookie-only, no `localStorage` token
 persistence, correct fail-safe logout) is solid; canvas save/load
 round-trips correctly with no dropped fields; every Field Calculator
 formula spot-checked correct.)
+
+2026-09-14 (**Fixed the Solar/Wind annual-demand-table drift with real
+researched figures, not a guess.** A full bug-hunting pass found
+`solarService.js` and `windCalculationEngine.js` each hardcoded their own
+copy of `ANNUAL_DEMAND_KWH` (how much electricity a typical site of each
+category uses per year — the demand side of every "coverage %" verdict
+both tools produce), and the two had drifted apart: Business disagreed 2x
+(25,000 vs 50,000), Industrial disagreed 12x (3,000,000 vs 250,000) — the
+same site pin got a contradictory verdict depending which tool was used.
+
+Omar's reaction when this was first raised: "I don't know" what the real
+numbers should be, and asked for researched figures, not a guess, before
+any change. First research pass used WebSearch and came back with a
+table — but two of the four numbers (Farm 40,000, Business 30,000) were
+actually interpolated midpoints of a range, not numbers any source stated
+as "the average." Omar caught this ("are those real numbers?") and was
+right to — redid the research holding to a stricter bar: only use a
+figure a source explicitly states as a real average or typical value,
+say plainly when no such single figure exists, and never split a range
+in my own head and present it as researched.
+
+Second pass found: Home has no single better-cited figure than the
+existing 3,600 (real UK Ofgem medium-household range is ~2,500-2,900, so
+left unchanged rather than moved without a specific target). Farm's
+existing 25,000 turned out to already match a real cited "small arable
+farm" benchmark exactly (real farms range 25,000-150,000+ by type, this
+app's homestead/permaculture-scale audience fits the small end). Business
+had two legitimately different-but-real anchors depending on intended
+size (small ≤25,000 vs medium average 37,500) — Omar chose 25,000
+(small). Industrial's real cited average-factory figure is ~4,000,000 —
+Solar's old 3,000,000 was close, Wind's old 250,000 was the actual error,
+off by ~16x from the real figure.
+
+Final values Omar approved: Home 3,600 (unchanged), Farm 25,000
+(unchanged), Business 25,000 (was 25,000/50,000), Industrial 4,000,000
+(was 3,000,000/250,000). Unified into a new shared file,
+`swales-services/src/lib/energyDemand.js`, which both `solarService.js`
+and `windCalculationEngine.js` now import instead of each keeping its own
+copy — same fix pattern already applied to `HUB_HEIGHTS` for the
+identical reason. `swales-services` build verified clean after the
+change. `future-concerns.md` item 27 (this branch's numbering) added
+already-resolved with full detail.)
+
+2026-09-14 (**Emptied the rest of `swales-backend/public/uploads/` and
+`uploads/`, added a pre-launch reminder to check both repos again.** Omar
+confirmed the 27 project-thumbnail PNGs left untouched earlier today
+(pending confirmation nothing live referenced them) were also just test
+data and said to empty the whole directory — removed all 27, on top of
+the 161 already removed from the test bank-manual PDF, for 188 files
+total gone from this branch. Also asked for a standing roadmap note:
+before actual launch, empty all test-upload artifacts from both
+`swales-backend` and `swales-designer` again, not just once today.
+Checked `swales-designer` now — no `uploads/`-style folder exists there
+today, `public/objects/` is curated canvas-icon assets, not user uploads
+— but noted to re-check both repos closer to the real cutover date since
+this can recur from ordinary dev/testing. Added as `future-concerns.md`
+item 26 (a "before launch, whenever possible" item, not one of the two
+hard gates) and referenced from `roadmap.md`'s pre-launch checklist.)
+
+2026-09-14 (**Cleared the rest of the 2026-09-14 bug-hunt list: PDF-upload
+caps, share-payload cap, contact-form validation, two report-quality bugs,
+and an honest caveat on the wind IEC classification instead of a guessed
+fix.** Omar said "go ahead" on the remaining lower-priority findings after
+the auth hardening, the test-PDF removal, and the Solar/Wind demand-table
+fix were already done.
+
+`swales-backend` (branch `fix/upload-share-contact-hardening-2026-09-14`):
+`uploadController.js`'s `processPdf` had no cap on PDF page count or
+per-page rendered dimensions, both coming straight from
+attacker-controlled PDF content — added a 100-page cap (rejects the whole
+upload above it) and a 5000px-longest-side render-scale cap (scales a page
+down instead of erroring, so a genuinely large-format site plan still
+works instead of just failing). `shareController.js`'s `createShare` had
+no size check of its own despite `shareRoutes.js`'s comment claiming one
+existed — added a real 5MB cap (had to stringify `projectData` first
+since it arrives as a parsed object, not a string — `Buffer.byteLength`
+on the raw object would have thrown on every single request, caught this
+before shipping) and fixed the now-accurate comment. `contactController.js`
+didn't validate email format or reject CR/LF in `email`/`subject` before
+they flow into `emailService.js`'s real `replyTo`/`subject` header fields
+on the outbound email — added both checks.
+
+`swales-services` (`main`, `db8c65b`): `reportQAService.js`'s
+`answerOverallSuitability` sorted Solar/Wind's 0-100 composite suitability
+scores in the same ranked list as Contour Analysis's swale/building
+percent-of-area figures — a land-classification percentage, not a
+suitability score (a site where 90% of a small drawn rectangle happened
+to be swale-suitable terrain could out-rank a genuinely strong 70/100
+solar score). Now only genuine suitability scores are ranked; the area
+percentages are reported separately in the answer text, with the reason
+they aren't ranked stated explicitly. `combinedReportPdf.js`'s
+`altitudeData.weather` used the raw (possibly `_fetchFailed`)
+precipitation fetch while the line directly above it already normalizes
+that same value for the precipitation section — now both use the
+normalized value.
+
+**Deliberately not "fixed" the same way — documented instead**: the
+Extreme Wind Screening's IEC turbine classification
+(`extremeWindEngine.js`) compares a 10m instantaneous-gust V50 against
+IEC 61400-1's reference table, which is formally defined for the
+10-minute-mean wind speed at hub height. Gusts run higher than 10-min
+means, so this likely over-states the required turbine class. The actual
+fix is a gust-factor conversion (~1.4-1.6x per IEC/ESDU literature,
+depending on terrain/averaging time) — picking a specific factor is a
+real methodology decision, not something to invent silently the way two
+interpolated demand-table numbers almost got presented as researched
+earlier today (see the entry below and
+[[feedback_researched_figures_not_interpolated_guesses]] in memory).
+Added an explicit caveat instead, in both `extremeWindEngine.js`'s header
+comment and the Wind Dashboard's info tooltip: read the reported class as
+a conservative upper bound, not a literal mean-wind-speed classification,
+until Omar decides on a conversion factor.
+
+`future-concerns.md` item 25 (this branch's numbering) added
+already-resolved with full detail. `swales-services` build verified clean
+after each change.)
 
 2026-09-14 (**Permaculture Design Courses directory shipped: `swales-services`
 `790801d`, new `/courses` page.** Omar asked for a page listing permaculture

@@ -402,122 +402,46 @@ deferred** that carry real risk if ignored too long.
     top of `RainAdvisor.jsx` (and now `CropSuitabilityEngine.jsx`) where
     this is flagged inline.
 
-### Security (continued)
-
-24. **187 old uploaded PDF-page images (plus one raw source PDF) are
-    committed to git and served publicly with no auth.** — *Severity:
-    Medium — depends entirely on whether any of that content is
-    sensitive.* Found 2026-09-14 during a full bug-hunting pass:
-    `swales-backend/public/uploads/pdf-*-page-*.png` (187 files) is served
-    by `express.static` (`server.js`) with zero access control, and
-    `swales-backend/uploads/<hash>` (an 80-page PDF) sits outside the
-    served tree but is still permanently in git history. Both are leftovers
-    from before `uploadController.js` moved to `multer.memoryStorage()` +
-    Vercel Blob (see the comment at the top of `routes/uploadRoutes.js`).
-    **Not fixed in this pass** — removing files from git history is a
-    destructive, hard-to-reverse operation and wasn't done without
-    confirming first whether the actual content is sensitive. Next step:
-    Omar reviews what's actually in those files, then either a simple
-    `git rm` (if going-forward removal is enough) or a full history purge
-    (if the content itself needs to stop existing anywhere), plus
-    gitignoring `uploads/`/`public/uploads/` either way.
-
-25. **PDF-upload endpoint (`POST /api/upload/pdf`) has no page-count or
-    page-dimension cap.** — *Severity: Medium.* Found 2026-09-14. Both
-    `numPages` and each page's rendered canvas size come straight from
-    attacker-controlled PDF content with no upper bound — only the 20MB
-    file-size cap and the 40-req/5-min rate limit apply. A small, valid PDF
-    declaring thousands of pages or one huge page forces large synchronous
-    in-memory canvas allocations in a loop; a handful of concurrent
-    requests (well within the rate limit) can exhaust server memory/CPU.
-    Fix direction: cap `numPages` and reject pages above a sane
-    width/height before rendering, in `controllers/uploadController.js`'s
-    `processPdf`. Not fixed in this pass — needs a threshold decision
-    (what's a legitimate max page count for a garden-design reference PDF)
-    rather than an arbitrary number picked blind.
-
-26. **`shareController`'s create-share endpoint is fully unauthenticated,
-    unvalidated, and never expires.** — *Severity: Low-medium.* Found
-    2026-09-14. `createShare` stores whatever `projectData` blob is posted
-    with only a truthiness check — no size/schema validation, no owner, no
-    expiry or deletion path anywhere in `shareController.js` or the `Share`
-    model. Functionally usable as an anonymous, rate-limited (40/5min/IP)
-    "paste bin" for arbitrary content, retrievable forever via
-    `GET /api/shares/:uuid`. Not currently exploited, but worth a size cap
-    and/or an expiry column if abuse ever shows up. A stale comment in
-    `routes/shareRoutes.js` also references "createShare's own size check"
-    which doesn't exist — worth fixing the comment regardless of whether a
-    real cap gets added.
-
-27. **Contact-form email/subject fields aren't format-validated before
-    use as email headers.** — *Severity: Low, low confidence.*
-    Found 2026-09-14. `contactController.js` only checks
-    truthiness of `name`/`email`/`message`; the raw values flow into
-    `emailService.js` as `replyTo`/`subject` fields on a real outbound
-    email via the Resend SDK. The HTML body is properly escaped
-    (`escapeHtml`) — only the header-like fields aren't. Likely low risk in
-    practice since Resend's structured JSON API probably rejects/strips
-    control characters, but not independently verified either way.
-
-### Advisory engine correctness
-
-28. **Solar and Wind maintain separate, drifted copies of the annual
-    energy-demand-by-category table.** — *Severity: High — gives users
-    contradictory answers from the same input.* Found 2026-09-14:
-    `swales-services/src/services/solarService.js`'s `ANNUAL_DEMAND_KWH`
-    and `swales-services/src/lib/wind/windCalculationEngine.js`'s table of
-    the same name disagree for `business` (25,000 vs 50,000 kWh/yr — 2x)
-    and `industrial` (3,000,000 vs 250,000 kWh/yr — 12x). The same site pin
-    gets a wildly different coverage/verdict from Solar vs. Wind for the
-    same category. `windService.js` already fixed this exact anti-pattern
-    for `HUB_HEIGHTS` (imported from `windCalculationEngine` specifically
-    "so the two can't silently drift apart") — `ANNUAL_DEMAND_KWH` never
-    got the same treatment. **Not fixed in this pass**: unifying the
-    source is mechanical, but which numbers are actually right is a
-    domain-judgment call for Omar to confirm, not something to pick
-    silently.
-
-29. **`reportQAService.answerOverallSuitability` ranks heterogeneous
-    scores as if directly comparable.** — *Severity: Medium.* Found
-    2026-09-14: `reportQAService.js` sorts Solar suitability (0-100
-    composite), Wind suitability (0-100 composite), and swale/building
-    percent-of-analyzed-area (a raw area percentage, different scale
-    entirely) in one array and calls the top one "this site's strongest
-    signal" — e.g. 90% of a small drawn rectangle happening to be
-    swale-suitable can out-rank a genuinely strong 70/100 solar score.
-    Needs real normalization before the four metrics can be compared, not
-    yet done.
-
-30. **`combinedReportPdf.js` skips a normalization step its neighbor line
-    applies.** — *Severity: Low, currently harmless.* Found 2026-09-14:
-    line ~208 passes the raw (possibly `_fetchFailed`) precipitation fetch
-    into `altitudeData.weather`, while the line just above it correctly
-    nulls that sentinel out for the precipitation section itself. Doesn't
-    currently misfire because every field on the `_fetchFailed` sentinel
-    happens to fail `buildWeatherInsights`'s thresholds — but it's latent,
-    and would misfire if that sentinel's shape ever changed.
-
-31. **Extreme-wind IEC turbine classification may compare the wrong wind
-    statistic against the standard.** — *Severity: Medium, methodological
-    — needs a read, not a blind fix.* Found 2026-09-14:
-    `windExtremeService.js` fits a Gumbel distribution to annual-maximum
-    daily *gusts* at 10m, then classifies the resulting V50 against IEC
-    61400-1's Class I/II/III table, which is formally defined as a 10-min
-    *mean* wind speed at *hub height*. Gusts run systematically higher than
-    10-min means, so this likely overstates the required turbine class
-    (recommending a more expensive turbine than necessary) — or, if gust
-    loading was the actual intent, it's mislabeled against the wrong
-    standard's units. Unlike every other cross-source unit reconciliation
-    in this codebase, there's no comment here explaining the choice, which
-    is conspicuous. Needs a decision on what the feature is actually
-    supposed to model before fixing.
-
-32. ~~**Second full bug-hunting pass (2026-09-15), all findings fixed
+24. ~~**Second full bug-hunting pass (2026-09-15), all findings fixed
     same day**: Google Sign-In DB error, rate-limiter budget sharing,
     two map staleness-guard gaps, a Sun Tracker stale closure, two
     auth-loading-flash gaps, a required-field gap, a designer
     constant-drift risk, a designer stale-fetch gap, and 13 blog posts
     needing de-duplication/cleanup.~~ Done 2026-09-15 — see `status.md`
+    and the Resolved entry below.
+
+25. ~~**Six remaining findings from the 2026-09-14 bug hunt**: PDF-upload
+    had no page/dimension cap, the share endpoint had no real size check,
+    contact-form email/subject weren't validated, `reportQAService` ranked
+    incomparable metrics, `combinedReportPdf.js` had a latent normalization
+    gap, and the Extreme Wind Screening's IEC classification lacked a
+    documented gust-vs-mean-wind-speed caveat.~~ Done 2026-09-14 — see
+    `status.md` and the Resolved entry below.
+
+26. **Before launch: empty all test-upload artifacts from
+    `swales-backend` and check `swales-designer` for the same pattern.**
+    — *Severity: Low, but explicit pre-launch requirement (Omar,
+    2026-09-14).* Prompted by finding a test PDF and 27 test project
+    thumbnails sitting in `swales-backend/public/uploads/` and `uploads/`
+    (removed 2026-09-14, see the Resolved entry below) — the underlying
+    lesson is that anything landing on local disk during dev/testing can
+    end up committed and served publicly, so this needs a real check right
+    before cutover, not just a one-time cleanup today. `swales-designer`
+    was checked 2026-09-14 and has no equivalent `uploads/`-style folder
+    today (its `public/objects/` is curated app assets, not user uploads)
+    — but re-check both repos again closer to the actual launch date in
+    case that's changed. Added to `roadmap.md`'s pre-launch checklist as a
+    "before launch, whenever possible" item (not one of the two hard
+    gates).
+
+    (Note: an earlier, narrower version of this same finding — just the
+    161-file test-PDF removal, before Omar asked for the full
+    `public/uploads/` cleanup — was tracked as its own item on the
+    `chore/remove-test-pdf-upload-2026-09-14` branch. Superseded by the
+    fuller item above; not duplicated here.)
+
+27. ~~**Solar and Wind maintained separate, drifted copies of the annual
+    energy-demand-by-category table.**~~ Done 2026-09-14 — see `status.md`
     and the Resolved entry below.
 
 ---
@@ -533,6 +457,39 @@ deferred** that carry real risk if ignored too long.
   (`swales-designer`, `swales-services`) no longer read/write the token via
   `localStorage` or send an `Authorization` header — everything rides the
   cookie via `withCredentials: true`.
+
+- **All 188 test-upload files removed from `swales-backend`** — Done
+  2026-09-14. Confirmed with Omar all of it was test data, not needed:
+  the 161 files from the test bank-manual PDF (already removed earlier
+  the same day) plus the 27 project-thumbnail PNGs that were initially
+  left untouched pending confirmation nothing live referenced them —
+  Omar said to empty the whole `public/uploads/` directory regardless.
+  `uploads/` and `public/uploads/` both gitignored going forward.
+
+- **Six remaining 2026-09-14 bug-hunt findings** — Done 2026-09-14.
+  `swales-backend`: `uploadController.js`'s `processPdf` now caps page
+  count at 100 and clamps every page's render scale so no canvas exceeds
+  5000px on its longest side (scales down instead of erroring on a
+  genuinely large page); `shareController.js`'s `createShare` now rejects
+  a payload over 5MB (the stale comment in `shareRoutes.js` claiming this
+  already existed is now actually true); `contactController.js` now
+  validates email format and rejects CR/LF in email/subject before they
+  reach `emailService.js`'s `replyTo`/`subject` fields. `swales-services`:
+  `reportQAService.answerOverallSuitability` no longer ranks Contour
+  Analysis's swale/building percent-of-area figures alongside Solar/Wind's
+  0-100 composite scores (a land-classification percentage isn't a
+  suitability score) — reported separately instead, with the reasoning
+  stated in the answer text; `combinedReportPdf.js`'s `altitudeData.weather`
+  now uses the same normalized precipitation value its neighbor line
+  already did. **Not fully resolved, documented instead**: the Extreme
+  Wind Screening's IEC classification compares a 10m instantaneous-gust V50
+  against IEC 61400-1's 10-minute-mean-at-hub-height standard — the actual
+  fix (a proper gust-factor conversion) needs a specific factor decision
+  Omar hasn't made, so this just adds an explicit caveat
+  (`extremeWindEngine.js`'s header comment + the dashboard's info tooltip)
+  that the reported class should be read as a conservative upper bound,
+  not a literal mean-wind-speed classification, instead of silently
+  picking a conversion factor.
 
 - **8 auth/session-security gaps found by a 2026-09-14 full-codebase audit**
   — Done same day, see `status.md`'s 2026-09-14 entry for full detail on
@@ -560,6 +517,24 @@ deferred** that carry real risk if ignored too long.
   missing the `else { setUser(null) }` branch `swales-services`' already
   has for a `200 {success:false}` response — added. Both frontends' builds
   verified clean after the fix.
+
+- **Solar/Wind annual-demand-table drift** — Done 2026-09-14. Found during
+  a full bug-hunting pass: `solarService.js` and `windCalculationEngine.js`
+  each hardcoded their own copy of `ANNUAL_DEMAND_KWH`, which had drifted
+  apart (Business 2x, Industrial 12x) — the same site got contradictory
+  coverage verdicts depending which tool was used. Omar asked for real
+  published figures rather than an interpolated guess before touching
+  anything; after two research passes (the first one included two
+  interpolated numbers that got correctly pushed back on), settled on:
+  Home unchanged (3,600 — already agreed, no single better cited figure
+  found), Farm unchanged (25,000 — matches a real cited "small arable
+  farm" benchmark), Business set to 25,000 (was 25,000/50,000 — matches a
+  real cited "small business" benchmark), Industrial set to 4,000,000
+  (was 3,000,000/250,000 — matches the real cited "average factory"
+  figure; Wind's old 250,000 was the actual error, ~16x off). Unified into
+  one new shared file, `swales-services/src/lib/energyDemand.js`, which
+  both services now import — same pattern already used for `HUB_HEIGHTS`,
+  so the two can't drift apart again.
 
 - **Second full bug-hunting pass (2026-09-15) — all findings fixed same
   day.** Full detail in `status.md`. Summary: `Users.AuthToken` widened

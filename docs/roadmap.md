@@ -98,8 +98,9 @@ from here on, not just sit as one more backlog row:
       go live, not just be decided. **Not started.**
 
    Everything else flagged as "before launch, whenever possible" (2FA,
-   disposable-email blocking, plant/element schema reconciliation — see
-   `future-concerns.md` items 2, 3, 9) is explicitly **not** a launch
+   disposable-email blocking, plant/element schema reconciliation, emptying
+   test-upload artifacts from `swales-backend`/`swales-designer` — see
+   `future-concerns.md` items 2, 3, 9, 25) is explicitly **not** a launch
    gate — worth fitting in if there's time, but the cutover doesn't wait
    on them.
 
