@@ -512,6 +512,14 @@ deferred** that carry real risk if ignored too long.
     is conspicuous. Needs a decision on what the feature is actually
     supposed to model before fixing.
 
+32. ~~**Second full bug-hunting pass (2026-09-15), all findings fixed
+    same day**: Google Sign-In DB error, rate-limiter budget sharing,
+    two map staleness-guard gaps, a Sun Tracker stale closure, two
+    auth-loading-flash gaps, a required-field gap, a designer
+    constant-drift risk, a designer stale-fetch gap, and 13 blog posts
+    needing de-duplication/cleanup.~~ Done 2026-09-15 — see `status.md`
+    and the Resolved entry below.
+
 ---
 
 ## Resolved
@@ -552,3 +560,25 @@ deferred** that carry real risk if ignored too long.
   missing the `else { setUser(null) }` branch `swales-services`' already
   has for a `200 {success:false}` response — added. Both frontends' builds
   verified clean after the fix.
+
+- **Second full bug-hunting pass (2026-09-15) — all findings fixed same
+  day.** Full detail in `status.md`. Summary: `Users.AuthToken` widened
+  from `VARCHAR(255)` to `TEXT` (a real Google id_token always exceeded
+  the old limit, breaking every Google sign-in); `loginLimiter`/
+  `sensitiveActionLimiter` converted from shared singletons to
+  per-route factory functions (they were combining unrelated routes'
+  rate-limit budgets); added a per-user rate limit to authenticated
+  project-save routes; added format validation to the contact form and
+  newsletter signup (`utils/emailFormat.js`); `swales-services`'
+  `MapComponent.jsx` gained fetchId staleness guards on its two
+  unguarded fetches (location/geocode panel, altitude overlay); fixed
+  a Sun Tracker stale-closure bug (date/time customization silently
+  reverting on the next pin move); fixed a false "please sign in" flash
+  on Compare and Specialized Reports for already-signed-in users; made
+  Specialized Reports' "which site?" field required; `swales-designer`
+  got a shared `canvasConstants.ts` for `PIXELS_PER_METER` (was
+  duplicated as a bare `40`) and a stale-fetch guard on
+  `AllGardensModal.tsx`; 13 blog posts were de-duplicated, deleted, or
+  had off-topic/brand-impersonation content removed (same defect class
+  as the earlier pest-control-post fix, found to recur more widely on
+  a broader sample).
