@@ -487,6 +487,33 @@ deferred** that carry real risk if ignored too long.
   not a literal mean-wind-speed classification, instead of silently
   picking a conversion factor.
 
+- **8 auth/session-security gaps found by a 2026-09-14 full-codebase audit**
+  — Done same day, see `status.md`'s 2026-09-14 entry for full detail on
+  each: (1) rate limiting was non-functional on Vercel (no `trust proxy`,
+  every request shared one bucket) — fixed with `app.set("trust proxy", 1)`
+  in `server.js`; (2) password complexity was client-side only — added
+  `utils/passwordPolicy.js`, enforced in `register`/`resetPassword`/
+  `changePassword`; (3) login enabled user enumeration via 4 distinguishable
+  error messages — "no such user" and "wrong password" now return one
+  generic message (Google-account/unverified messages kept, low
+  enumeration value, real UX value); (4) password-reset tokens had no
+  single-use enforcement — closed via `assertResetTokenFresh` in
+  `tokenService.js`, reusing the `PasswordChangedAt` bump a successful
+  reset already does; (5) logout didn't invalidate the session
+  server-side, only cleared the cookie — added a `SessionsInvalidatedAt`
+  column (migration `20260914010000`) checked the same way
+  `PasswordChangedAt` already is (note: this invalidates every session for
+  the account, not just the current device — no per-session tracking
+  exists to scope it narrower); (6) "remember me" unchecked still issued a
+  full 30-day token, only the cookie's persistence changed — `generateToken`
+  now takes an `expiresIn` and login passes `"1d"` when unchecked; (7)
+  bearer token returned in the login response body on every web call, not
+  gated to mobile — reviewed, left as-is since mobile needs it and neither
+  web frontend persists it; (8) `swales-designer`'s `AuthContext` was
+  missing the `else { setUser(null) }` branch `swales-services`' already
+  has for a `200 {success:false}` response — added. Both frontends' builds
+  verified clean after the fix.
+
 - **Second full bug-hunting pass (2026-09-15) — all findings fixed same
   day.** Full detail in `status.md`. Summary: `Users.AuthToken` widened
   from `VARCHAR(255)` to `TEXT` (a real Google id_token always exceeded

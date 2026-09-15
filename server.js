@@ -20,6 +20,16 @@ const axios = require("axios");
 
 const app = express();
 
+// Trust the first hop of the proxy chain (Vercel's edge) so `req.ip` and
+// express-rate-limit resolve the real caller from X-Forwarded-For instead of
+// Vercel's internal proxy address. Without this, every request on Vercel
+// looked like it came from the same IP, so loginLimiter/sensitiveActionLimiter
+// (utils/rateLimiters.js) bucketed every user together — one abusive caller
+// could lock out everyone else, while a real attacker spreading requests
+// across many IPs got no extra throttling at all. express-rate-limit itself
+// detects and warns about this exact misconfiguration on startup.
+app.set("trust proxy", 1);
+
 // --- 1. CORS CONFIGURATION ---
 const corsOptions = {
   origin: [

@@ -129,6 +129,141 @@ database from this session — goes through the normal PR/Neon-branch flow.
 `future-concerns.md` item 24 and its Resolved-section counterpart added
 with full detail.)
 
+
+2026-09-14 (**Full priority-ordered bug-hunting pass across all three repos,
+plus 8 auth/session-security fixes.** Omar asked for a full deep-search bug
+hunt across the whole app, priority-first, then to fix the auth findings and
+keep going. Ran 6 parallel read-only audits: auth/security (all 3 repos),
+access-gating/monetization, advisory-engine correctness, backend data
+controllers, frontend free tools, and `swales-designer`. Full findings list
+lives in `future-concerns.md` items 24-31 (the ones not fixed) plus its
+Resolved section (the ones fixed) — this entry covers what actually changed.
+
+**Fixed immediately (mechanical, zero ambiguity):**
+- 7 more unescaped `'`/`"` in raw JSX text that would fail `next build`
+  the same way one already did on `/courses` earlier today: `swales-services`'
+  `WindDashboard.jsx` (×2), `AskAboutSite.jsx`, `MapComponent.jsx` (×2);
+  `swales-designer`'s `ForgotPasswordModal.tsx`, `SelectPdfPageStep.tsx`.
+- Terrace Spacing Calculator (`swales-services`) silently showed "0.00 m /
+  0 terraces needed" for a slope too steep for the chosen riser ratio to
+  ever close the geometry — now shows a clear "pick a steeper riser"
+  message instead (`terraceSpacing.js` returns `null` instead of `0`,
+  `TerraceSpacingCalculator.jsx` renders a warning for that case).
+- DLI calculator accepted a >24h photoperiod with no warning — added `max`
+  support to the shared `NumberField` (`calculator-controls.jsx`), used
+  with `max={24}`.
+- Dead `className="homepage=wrapper"` typo (invalid CSS class, `=` instead
+  of `-`, no stylesheet ever targeted it either way) copy-pasted across 10
+  pages — fixed to `homepage-wrapper` everywhere for consistency with the
+  2 pages that already had it right.
+- Both `swales-services` and `swales-designer` production builds verified
+  clean (`exit 0`) after these fixes.
+
+**Fixed after explicit go-ahead — 8 auth/session-security items, all in
+`swales-backend`:**
+1. Rate limiting was likely non-functional on Vercel: no `app.set("trust
+   proxy", ...)`, so `req.ip` resolved to Vercel's internal proxy address
+   for every request — `express-rate-limit` itself detects and warns about
+   this exact misconfiguration. Every caller shared one effective
+   rate-limit bucket: one abusive user could lock out everyone else from
+   login, while a real attacker spreading requests across IPs got no extra
+   throttling. Fixed with one line, `server.js`.
+2. Password complexity (uppercase/lowercase/digit/symbol/8+ chars,
+   identical rule already enforced in 5 frontend locations) had zero
+   backend enforcement — a direct API call could register or reset to a
+   1-character password. Added `utils/passwordPolicy.js`, wired into
+   `register`, `resetPassword`, `changePassword`.
+3. Login returned 4 distinguishable messages ("no such user" / "that's a
+   Google account" / "verify your email" / "wrong password"), enabling
+   textbook user enumeration and directly inconsistent with
+   `forgotPassword`'s already-generic response just above it in the same
+   file. Merged "no such user" and "wrong password" into one "Invalid
+   email or password" message — kept the Google-account and
+   unverified-email messages distinguishable since those carry real,
+   low-risk UX value for a legitimate user looking at their own login
+   form (a judgment call, not a mechanical fix — flagged here in case
+   Omar wants those collapsed too).
+4. Password-reset tokens (bare 15-minute JWTs) had no single-use
+   enforcement — a forwarded/cached/auto-clicked reset link could be
+   replayed as many times as wanted inside its window. Closed for free by
+   reusing the fact that a successful reset already bumps
+   `PasswordChangedAt`: added `assertResetTokenFresh` (`tokenService.js`)
+   which rejects any reset token whose `iat` is older than the user's
+   current `PasswordChangedAt` — the same invariant `assertSessionValid`
+   already enforces for login sessions, applied to the reset flow itself.
+   `verifyResetToken` now returns `{email, iat}` instead of a bare string
+   (one caller, `resetPassword`, updated to match).
+5. Logout only cleared the client's cookie — a token that existed outside
+   the browser's cookie jar at logout time (copied value, compromised
+   machine, a synced cookie store) stayed fully valid for the rest of its
+   life. Added a new `SessionsInvalidatedAt` column on `Users`
+   (migration `20260914010000-add-sessions-invalidated-at-to-users.js`,
+   **not yet run against the Neon dev branch from this session** — same
+   as the `PasswordChangedAt` migration before it, `db:migrate` is a
+   mutating DB command this environment doesn't run locally; goes through
+   the PR's isolated-Neon-branch check same as always), checked in
+   `assertSessionValid` the same way `PasswordChangedAt` is. Logout now
+   bumps it (best-effort — a request with no valid session to identify
+   still clears the cookie and succeeds rather than erroring). **Note**:
+   since there's no per-session/per-device tracking in this schema, this
+   invalidates every session for the account, not just the one being
+   logged out — "log out this device" and "log out everywhere" are the
+   same operation for now. Flagged rather than silently shipped in case
+   that's not the intended UX.
+6. "Remember me" left unchecked already made the cookie a session cookie
+   (dies on browser close) but still issued a full 30-day JWT underneath
+   it — a token that leaked off the browser outlived the "session-only"
+   wrapper around it by a huge margin. `generateToken` now takes an
+   `expiresIn` param (defaults to `"30d"`, unchanged for the other two
+   callers — `updateProfile`, Google sign-in); login passes `"1d"` when
+   `rememberMe` is false.
+7. Reviewed but **not changed**: the raw JWT is returned in the JSON
+   response body on every login/profile-update/Google-sign-in call, not
+   gated to a mobile-only path, alongside the httpOnly cookie. Confirmed
+   neither web frontend persists this value (no `localStorage`/
+   `sessionStorage` write found in either `swales-services` or
+   `swales-designer`) — left as-is since the RN/Expo mobile client
+   (Phase B, per `roadmap.md`) needs a token in the body since it can't
+   rely on a browser cookie jar the same way. Worth revisiting if a future
+   regression ever adds a `localStorage.setItem` on the web side.
+8. `swales-designer`'s `AuthContext.tsx` `fetchUserProfile` was missing
+   the `else { setUser(null) }` branch that `swales-services`' equivalent
+   already has (added 2026-08-26 there) for a `200 {success:false}`
+   response — without it, stale `user` state from earlier in the same tab
+   kept rendering as signed in. Added, matching the existing pattern.
+
+Both `swales-services` and `swales-designer` production builds re-verified
+clean after the auth fixes (the two `.tsx` changes there). Backend changes
+are syntax-checked (`node --check`, all clean) but **not run against a live
+database from this session** — same local-mutating-DB restriction as every
+prior migration in this project; will apply via the normal PR/Neon-branch
+flow.
+
+**Found but explicitly deferred pending Omar's decision** (not fixed, see
+`future-concerns.md` items 24-31 for full detail): 187 old uploaded
+PDF-page images committed to git and served publicly with no auth (needs
+Omar to confirm whether the content is sensitive before deciding
+git-history purge vs. going-forward removal); PDF-upload endpoint has no
+page-count/dimension cap (DoS risk, needs a threshold decision); an
+unauthenticated/unvalidated/never-expiring share-endpoint usable as an
+anonymous paste bin; low-confidence contact-form email-header-injection
+risk; Solar and Wind's annual-demand-by-category tables have drifted apart
+by up to 12x for the same category (needs Omar to confirm the right
+numbers before unifying); `reportQAService` ranks incompatible metrics as
+directly comparable; a latent (currently harmless) normalization
+inconsistency in `combinedReportPdf.js`; and a methodological question
+about whether the Extreme Wind Screening's IEC turbine classification
+compares the right wind statistic against the standard.
+
+Also found and confirmed clean by the audits (no bug): no IDOR anywhere in
+`projectController.js`/`elementController.js`/`shareController.js`; no
+`window.__debugCompare` bypass remaining (confirmed removed); the 5-location
+password-regex drift flagged 2026-09-13 is fully resolved, all 5 currently
+identical; `swales-designer`'s auth (cookie-only, no `localStorage` token
+persistence, correct fail-safe logout) is solid; canvas save/load
+round-trips correctly with no dropped fields; every Field Calculator
+formula spot-checked correct.)
+
 2026-09-14 (**Emptied the rest of `swales-backend/public/uploads/` and
 `uploads/`, added a pre-launch reminder to check both repos again.** Omar
 confirmed the 27 project-thumbnail PNGs left untouched earlier today
