@@ -402,7 +402,15 @@ deferred** that carry real risk if ignored too long.
     top of `RainAdvisor.jsx` (and now `CropSuitabilityEngine.jsx`) where
     this is flagged inline.
 
-24. ~~**Six remaining findings from the 2026-09-14 bug hunt**: PDF-upload
+24. ~~**Second full bug-hunting pass (2026-09-15), all findings fixed
+    same day**: Google Sign-In DB error, rate-limiter budget sharing,
+    two map staleness-guard gaps, a Sun Tracker stale closure, two
+    auth-loading-flash gaps, a required-field gap, a designer
+    constant-drift risk, a designer stale-fetch gap, and 13 blog posts
+    needing de-duplication/cleanup.~~ Done 2026-09-15 — see `status.md`
+    and the Resolved entry below.
+
+25. ~~**Six remaining findings from the 2026-09-14 bug hunt**: PDF-upload
     had no page/dimension cap, the share endpoint had no real size check,
     contact-form email/subject weren't validated, `reportQAService` ranked
     incomparable metrics, `combinedReportPdf.js` had a latent normalization
@@ -410,7 +418,7 @@ deferred** that carry real risk if ignored too long.
     documented gust-vs-mean-wind-speed caveat.~~ Done 2026-09-14 — see
     `status.md` and the Resolved entry below.
 
-25. **Before launch: empty all test-upload artifacts from
+26. **Before launch: empty all test-upload artifacts from
     `swales-backend` and check `swales-designer` for the same pattern.**
     — *Severity: Low, but explicit pre-launch requirement (Omar,
     2026-09-14).* Prompted by finding a test PDF and 27 test project
@@ -472,3 +480,25 @@ deferred** that carry real risk if ignored too long.
   that the reported class should be read as a conservative upper bound,
   not a literal mean-wind-speed classification, instead of silently
   picking a conversion factor.
+
+- **Second full bug-hunting pass (2026-09-15) — all findings fixed same
+  day.** Full detail in `status.md`. Summary: `Users.AuthToken` widened
+  from `VARCHAR(255)` to `TEXT` (a real Google id_token always exceeded
+  the old limit, breaking every Google sign-in); `loginLimiter`/
+  `sensitiveActionLimiter` converted from shared singletons to
+  per-route factory functions (they were combining unrelated routes'
+  rate-limit budgets); added a per-user rate limit to authenticated
+  project-save routes; added format validation to the contact form and
+  newsletter signup (`utils/emailFormat.js`); `swales-services`'
+  `MapComponent.jsx` gained fetchId staleness guards on its two
+  unguarded fetches (location/geocode panel, altitude overlay); fixed
+  a Sun Tracker stale-closure bug (date/time customization silently
+  reverting on the next pin move); fixed a false "please sign in" flash
+  on Compare and Specialized Reports for already-signed-in users; made
+  Specialized Reports' "which site?" field required; `swales-designer`
+  got a shared `canvasConstants.ts` for `PIXELS_PER_METER` (was
+  duplicated as a bare `40`) and a stale-fetch guard on
+  `AllGardensModal.tsx`; 13 blog posts were de-duplicated, deleted, or
+  had off-topic/brand-impersonation content removed (same defect class
+  as the earlier pest-control-post fix, found to recur more widely on
+  a broader sample).
