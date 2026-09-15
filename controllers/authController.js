@@ -20,11 +20,18 @@ const {
 } = require("../utils/tokenService");
 const { Op } = require("sequelize");
 const normalizeEmail = require("../utils/normalizeEmail");
+const { isValidEmailFormat } = require("../utils/emailFormat");
 const { isValidPassword, PASSWORD_HINT } = require("../utils/passwordPolicy");
 
 exports.register = async (req, res) => {
   const { firstName, lastName, password, dateOfBirth, src } = req.body;
   const email = normalizeEmail(req.body.email);
+  // Without this, a non-string email (e.g. an array) sails through
+  // normalizeEmail() untouched, and Sequelize compiles an array `where`
+  // value into `IN (...)` - see the matching guard in login()/forgotPassword()
+  // for the exploit this closes.
+  if (!isValidEmailFormat(email))
+    return errorResponse(res, "Please enter a valid email address.", null, 400);
   const checkUserEmailSimple = await User.findOne({
     where: { [Op.and]: [{ Email: email }, { loginType: "google" }] },
   });
@@ -79,6 +86,12 @@ exports.resendVerification = async (req, res) => {
   try {
     const { src } = req.body;
     const email = normalizeEmail(req.body.email);
+    // Same array-injection guard as login()/forgotPassword() - see there.
+    if (!isValidEmailFormat(email))
+      return successResponse(
+        res,
+        "If that email is registered and not yet verified, a new verification link has been sent.",
+      );
     const user = await User.findOne({ where: { Email: email } });
     // Same response whether the account doesn't exist, is already verified,
     // or a new link was actually sent - mirrors forgotPassword's
@@ -147,6 +160,15 @@ exports.verifyEmail = async (req, res) => {
 exports.login = async (req, res) => {
   const { password, rememberMe } = req.body;
   const email = normalizeEmail(req.body.email);
+  // A non-string email (e.g. `["victim@x.com", "attacker@x.com"]`) would
+  // otherwise reach Sequelize's `where` untouched and compile to an `IN
+  // (...)` clause - letting one request test a password against a whole
+  // batch of candidate emails (bypassing the per-IP rate limit's intent)
+  // and, in forgotPassword's case, mint a real reset token for a victim
+  // while the email carrying it also gets sent to an attacker-controlled
+  // address included in the same array.
+  if (!isValidEmailFormat(email))
+    return errorResponse(res, "Invalid email or password.", null, 401);
   const checkUserEmailSimple = await User.findOne({
     where: { [Op.and]: [{ Email: email }, { loginType: "google" }] },
   });
@@ -236,6 +258,12 @@ exports.forgotPassword = async (req, res) => {
   try {
     const { source } = req.body;
     const email = normalizeEmail(req.body.email);
+    // See login()'s matching guard - without this, an array-valued email
+    // matches the victim's account via Sequelize's `IN (...)` compilation
+    // and a valid reset token gets minted and emailed to every address in
+    // the array, attacker-controlled ones included.
+    if (!isValidEmailFormat(email))
+      return successResponse(res, "If that email is registered, a reset link has been sent.");
     const user = await User.findOne({ where: { Email: email } });
     // Same response whether or not the account exists - a distinguishable
     // "User not found" here lets anyone enumerate every registered email.

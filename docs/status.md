@@ -7,6 +7,114 @@ left off."
 
 ## Last updated
 
+2026-09-15 (**Third full bug-hunting pass, critical/high/medium findings
+fixed same day.** Omar asked for another priority-ordered pass. Ran it and
+fixed everything found, in priority order.
+
+**Critical — `swales-backend` (branch `fix/auth-email-validation-2026-09-15`):**
+`authController.js`'s `register`/`login`/`forgotPassword`/
+`resendVerification` all ran `normalizeEmail(req.body.email)`, but that
+helper only lower-cases/trims when the input is already a string - a
+non-string `email` (e.g. a JSON array in the POST body) passed through
+untouched and reached Sequelize's `where: { Email: email }` as-is.
+Sequelize compiles an array `where` value into an `IN (...)` clause. Against
+`login`, `email: ["a@x.com", "b@x.com", ...]` let one request test a
+single password against a whole batch of candidate emails - defeating the
+per-IP rate limiter's intent, since it's still one request. Against
+`forgotPassword`, an array containing a real victim email plus an
+attacker-controlled address matched the victim's account, minted them a
+genuine password-reset token, and mailed that token to *every* address in
+the array - a real account-takeover path, not just an enumeration issue.
+Fixed by requiring `utils/emailFormat.js`'s existing `isValidEmailFormat()`
+(already used correctly by `subscribeController.js` and, since the second
+pass, the contact form/newsletter signup - just never carried to the auth
+controller) on all four endpoints before any lookup runs. This also closes
+the separately-flagged "no format validation on `Users.Email`" gap in the
+same change, since a garbage-but-string email is now rejected too.
+
+**Medium — same branch:** `vercel.json` had no explicit function duration,
+relying on Vercel's 10s default for the single `server.js` Lambda that
+serves every route. `register`/`forgotPassword` both await sending an
+email (Resend) synchronously before responding, and PDF upload processing
+(`uploadController.js`) can involve near-100-page documents - both
+plausibly exceed 10s under a slow dependency. Added `maxDuration: 60`
+(the max both Hobby and Pro allow without Fluid Compute) to the `builds`
+config.
+
+**High — `swales-services` (`main`, commit `1d10492`):** "Remember me" on
+the login page was fully inert two ways at once. `authService.js`'s
+`loginUser(email, password)` didn't accept a third argument at all, so
+`formData.rememberMe` never reached the request body regardless of the
+checkbox - every login was silently issued as an unremembered 1-day
+session, quietly undermining the remember-me work from the very first bug
+hunt. Separately, the checkbox itself (`type="checkbox" value={...}`
+routed through the shared `Input.jsx`) was uncontrolled, since a
+checkbox's on-screen state is driven by `checked`, not `value` - `Input.jsx`
+only ever forwarded `value`. Fixed both: `loginUser()` now takes and
+forwards `rememberMe`, `Input.jsx` forwards `checked` when
+`type="checkbox"`, and `login/page.js` passes `checked` instead of `value`.
+
+**Medium — same commit:** no double-submit guard existed on
+login/signup/forgot-password/reset-password - the pattern
+(`if (isSubmitting) return;` as the first line of the handler, before even
+validation) already existed correctly in `AccountDetailsModal.jsx` but
+hadn't been carried to the main auth pages, so a double-click or a fast
+double-Enter before React re-rendered `disabled={loading}` could fire two
+submits. Added the same guard to all four handlers.
+
+**Medium — same commit:** the shared `axiosInstance.js` used a flat 5000ms
+timeout for every request, including signup and forgot-password - both of
+which, per the Critical section above, wait on a synchronous email send
+server-side. A slow-but-successful Resend response could false-negative a
+real registration or reset request. Raised to 15000ms.
+
+**High — `swales-designer` (`main`, commit `a9770c2`):** `GoogleLogin.tsx`
+had no path back to an idle state if the user closed the Google popup
+themselves or denied consent - NextAuth's error page (denial) or the user
+just closing the window (either case) means `/auth-popup-complete` never
+loads and never posts its `google-auth-success` message, so the listener
+that resets `isLoading` simply never fires. The button was stuck reading
+"Signing in..." indefinitely with no error shown. Fixed with a
+`popup.closed` poll (500ms) alongside the existing message listener -
+whichever settles first (success message or popup-closed) cleans up the
+other.
+
+**High — same commit:** the second bug hunt's auth-loading-flash fix
+(gate rendering on `AuthContext`'s `isLoading`, not just `user`, since
+`user` starts `null` until the initial `/auth/me` round-trip resolves)
+only ever reached `swales-services`' `Header.jsx`. `swales-designer`'s
+`Header.tsx`, `MobileHeader.tsx`, and `TopBar.tsx` all still showed a
+Login/Sign-Up flash (or a "Log in to save"/"Log in to print"-style
+logged-out flash on `TopBar`) on every cold load, and `AllGardensModal.tsx`
+could fall through to "No gardens found" instead of a loading state under
+the same race. Since these components are shared into `app/page.tsx`
+(canvas) and `app/share/[uuid]/page.tsx` via `<Header>`/`<MobileHeader>`/
+`<TopBar>`, fixing the four components covers both pages without touching
+them directly. Applied the same `isLoading`-gated pattern
+`swales-services`' `Header.jsx` already used (an invisible, same-width
+placeholder during the loading window, not an omitted one, to avoid a
+layout jump).
+
+**Deliberately deferred, Low severity** (see `future-concerns.md` items
+29-31): a `pdfjs-dist` major-version bump (regression risk without a full
+PDF-upload QA pass this session didn't have room for), a fragile
+exact-string error match in `AccountDetailsModal.jsx`'s change-password
+handler (the real fix needs a backend error-code contract, not a frontend
+patch), and a full scan of all 478 blog posts for the content-corruption
+defect class the first two bug hunts found recurring - this pass's
+findings named the symptom categories (gibberish text, leftover template
+markers, an invented product with fake guarantees, malformed headings,
+affiliate-voice content, zero-width-character corruption) across roughly
+9 posts but a full-repo scan is sized as its own task.
+
+`swales-backend` change syntax-checked (`node -c`, clean); `swales-services`
+and `swales-designer` changes checked with each repo's ESLint config
+(clean - the only pre-existing warnings/errors reported were unrelated to
+the touched lines, confirmed via diff). No live browser verification this
+session. `future-concerns.md` item 28 (plus items 29-31 for the deferred
+Low items) and the Resolved-section counterpart added with full detail.)
+
+
 2026-09-15 (**Second full bug-hunting pass, all 6 areas fixed same day.**
 Omar asked for another priority-ordered bug hunt across all three repos now
 that yesterday's fixes had landed, again lowest-priority-last. Ran 6
