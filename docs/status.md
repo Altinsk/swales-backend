@@ -7,6 +7,128 @@ left off."
 
 ## Last updated
 
+2026-09-15 (**Second full bug-hunting pass, all 6 areas fixed same day.**
+Omar asked for another priority-ordered bug hunt across all three repos now
+that yesterday's fixes had landed, again lowest-priority-last. Ran 6
+parallel audits: self-review of everything changed 2026-09-14 (found
+clean — no bugs), `MapComponent.jsx`, Compare/Consultations/Specialized
+Reports/Pricing, remaining backend controllers, `swales-designer`
+peripherals, and a broader blog-content sample. Then fixed everything
+found, in priority order.
+
+**Critical — `swales-backend` (branch `fix/google-auth-token-column-2026-09-15`):**
+`Users.AuthToken` (`VARCHAR(255)`) stores the raw Google id_token JWT on
+every Google sign-in, but a real id_token's signature segment alone is
+already ~342 characters — guaranteed to exceed 255 every time, and
+Postgres enforces the limit strictly (no silent truncation like MySQL).
+Every Google sign-in, first-time or returning, was almost certainly
+throwing a `SequelizeDatabaseError` and surfacing as a generic 500.
+Widened to `TEXT` (migration `20260915010000`, not yet run against the
+Neon dev branch — same local-mutating-DB restriction as every prior
+migration) — this column is write-only bookkeeping, never read back, so
+no reason to bound it.
+
+**High — same branch:** `loginLimiter`/`sensitiveActionLimiter`
+(`utils/rateLimiters.js`) were built once as singleton middleware and the
+same instance imported into every route that needed "a limit shaped like
+this" — `express-rate-limit` keys by IP only with no idea which route
+it's mounted on, so `sensitiveActionLimiter`'s "5 per hour" was actually
+one combined budget shared across register/forgot-password/reset-password/
+resend-verification/change-password/the contact form/newsletter signup. A
+user tripping any one of those could find themselves locked out of the
+others too. Converted both to factory functions — each route now calls
+`sensitiveActionLimiter()`/`loginLimiter()` to get its own independent
+store. Also added a new `authenticatedWriteLimiter` (keyed by user id) to
+`createProject`/`updateProject`, which upload to paid Vercel Blob storage
+with no limit beyond auth itself. Added format validation (new shared
+`utils/emailFormat.js`, avoiding the drift risk a second hand-copied
+regex would create) to the contact form and newsletter signup, neither of
+which validated email format before.
+
+**High — `swales-services` (`main`, commit `7ed424a`):** `MapComponent.jsx`
+is otherwise heavily hardened against stale-fetch races (every other
+fetch already has a `fetchIdRef` guard with an inline comment explaining
+why), but `updateLocationAndTimeGeoInfo` (the location name/DMS/elevation/
+UTM/timezone info panel) and `altitudeLayer.js`'s `getAltitudeData` (the
+on-map elevation overlay) had none — a fast pin move could display the
+previous location's info under the new pin, and (for the geo-info panel)
+compute the sun position for the wrong site too. Added the same
+`fetchIdRef` pattern to both, plumbing an optional `fetchIdRef` param
+through `getAltitudeData`'s three call sites since it lives in a separate
+module from the component holding the ref.
+
+**Medium — same commit:** the Sun Tracker date/time-customization effect
+was missing `dateValue`/`timeValue` from its dependency array — after
+manually setting a custom date/time, moving the pin once (without some
+*other* listed dependency changing first) silently reverted to the
+pre-customization time, since the click/drag handlers' closure held
+stale values. Added both to the dependency array — confirmed this can't
+loop, since nothing in the effect body calls `setDateValue`/`setTimeValue`
+outside the user-triggered click/drag handlers themselves.
+
+**Medium — same commit:** `CompareView.jsx` and `specialized-reports/page.js`
+could briefly show a false "please sign in" gate to an already-signed-in
+user during the initial `/auth/me` round-trip (`AuthContext`'s `user`
+stays `null` until it resolves) — the same gap `pricing/page.js` and
+`Header.jsx` already guard against with an `isLoading` check, just not
+applied here. Added the same guard to both (a no-op during the loading
+window rather than showing the gate). Also made Specialized Reports'
+"which site?" field required — the entire $159 deliverable depends on
+knowing which site, and it was previously optional with a silent
+"(no additional details provided)" fallback.
+
+**Medium — `swales-designer` (`main`, commit `4310521`):** `app/page.tsx`
+re-declared `PIXELS_PER_METER` as a bare `40` in two places (the
+scale-ruler indicator) instead of importing `GardenCanvas.tsx`'s real
+value — same copy-paste-drift risk as `ANNUAL_DEMAND_KWH` fixed
+2026-09-14, just hadn't drifted yet. Extracted into a new
+`components/canvasConstants.ts` (kept separate from `GardenCanvas.tsx`
+itself since that component is loaded via `next/dynamic` specifically to
+avoid bundling/SSR-ing it eagerly — a second, non-dynamic import path
+into the same module would defeat that). Also added a `requestIdRef`
+stale-fetch guard to `AllGardensModal.tsx`'s saved-projects list, matching
+the pattern `AccountDetailsModal.tsx` already used correctly — a fast
+sort/page/search/date-range change could previously show a transiently
+wrong list.
+
+**Low priority, explicitly sampled last per Omar's request — blog content
+(`swales-services` `main`, commit `128c606`):** a broader spot-check (15-20
+posts beyond the 2 already checked 2026-09-13) found the same defect
+classes recurring more widely than the first two instances suggested.
+De-duplicated 8 posts where the entire article body was repeated verbatim
+in one file (`avoiding-mistakes-with-compost-heap-worms-expert-tips.md`,
+`fig-tree-problems-uk.md`, `growing-vetiver-seeds-a-complete-guide.md`,
+`little-hogweed-plant.md`,
+`mastering-tulipa-greigii-care-essential-gardening-tips.md`,
+`mastering-utility-mapping-a-comprehensive-guide.md`,
+`perfecting-rocket-stove-dimensions-for-efficient-cooking.md`,
+`terraces-agriculture.md`). Deleted 3 posts with no salvageable
+permaculture/land-design substance (same treatment as the "Effective
+Results Pest Controls" post removed 2026-09-13):
+`the-power-of-electric-electrify-your-world.md` (corrupted find-replace
+artifacts, duplicated, generic electricity-history content misfiled as
+Permaculture), `flowers-costco.md` (generic florist/gift content naming a
+real retailer), `enhance-your-garden-with-a-designer-windbreaker.md`
+(confuses garden windbreaks with the jacket brand Stutterheim throughout
+nearly every section — not a few tangents, the whole article). Trimmed 3
+posts with genuine, salvageable content: `mastering-lions-mane-grow-kit-
+cultivation-guide.md` (removed an ecommerce "shop page" block written in
+first person as the seller — HARVEST GUARANTEE/SHIPPING INFO/ADD-ONS —
+kept the real cultivation content before it), `pristine-lawn-guide-clean-
+grass-tips.md` (removed one sentence naming the real brand Bella Turf,
+kept the rest), `innovative-windbreaker-design-ideas-for-permaculture.md`
+(removed 3 clothing-shopping tangents plus a frontmatter excerpt that
+literally said "stylish outerwear" — this one named no specific real
+brand, unlike the deleted post, so a lighter edit was the right call
+instead of deletion).
+
+All three `swales-services`/`swales-designer` builds re-verified clean
+(`exit 0`) after their respective fixes. Backend changes syntax-checked
+(`node --check`, all clean) but the new migration not run against a live
+database from this session — goes through the normal PR/Neon-branch flow.
+`future-concerns.md` item 24 and its Resolved-section counterpart added
+with full detail.)
+
 2026-09-14 (**Fixed the Solar/Wind annual-demand-table drift with real
 researched figures, not a guess.** A full bug-hunting pass found
 `solarService.js` and `windCalculationEngine.js` each hardcoded their own
@@ -46,7 +168,7 @@ Final values Omar approved: Home 3,600 (unchanged), Farm 25,000
 and `windCalculationEngine.js` now import instead of each keeping its own
 copy — same fix pattern already applied to `HUB_HEIGHTS` for the
 identical reason. `swales-services` build verified clean after the
-change. `future-concerns.md` item 24 (this branch's numbering) added
+change. `future-concerns.md` item 25 (this branch's numbering) added
 already-resolved with full detail.)
 
 2026-09-14 (**Permaculture Design Courses directory shipped: `swales-services`
