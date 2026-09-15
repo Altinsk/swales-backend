@@ -440,6 +440,10 @@ deferred** that carry real risk if ignored too long.
     `chore/remove-test-pdf-upload-2026-09-14` branch. Superseded by the
     fuller item above; not duplicated here.)
 
+27. ~~**Solar and Wind maintained separate, drifted copies of the annual
+    energy-demand-by-category table.**~~ Done 2026-09-14 — see `status.md`
+    and the Resolved entry below.
+
 ---
 
 ## Resolved
@@ -513,6 +517,24 @@ deferred** that carry real risk if ignored too long.
   missing the `else { setUser(null) }` branch `swales-services`' already
   has for a `200 {success:false}` response — added. Both frontends' builds
   verified clean after the fix.
+
+- **Solar/Wind annual-demand-table drift** — Done 2026-09-14. Found during
+  a full bug-hunting pass: `solarService.js` and `windCalculationEngine.js`
+  each hardcoded their own copy of `ANNUAL_DEMAND_KWH`, which had drifted
+  apart (Business 2x, Industrial 12x) — the same site got contradictory
+  coverage verdicts depending which tool was used. Omar asked for real
+  published figures rather than an interpolated guess before touching
+  anything; after two research passes (the first one included two
+  interpolated numbers that got correctly pushed back on), settled on:
+  Home unchanged (3,600 — already agreed, no single better cited figure
+  found), Farm unchanged (25,000 — matches a real cited "small arable
+  farm" benchmark), Business set to 25,000 (was 25,000/50,000 — matches a
+  real cited "small business" benchmark), Industrial set to 4,000,000
+  (was 3,000,000/250,000 — matches the real cited "average factory"
+  figure; Wind's old 250,000 was the actual error, ~16x off). Unified into
+  one new shared file, `swales-services/src/lib/energyDemand.js`, which
+  both services now import — same pattern already used for `HUB_HEIGHTS`,
+  so the two can't drift apart again.
 
 - **Second full bug-hunting pass (2026-09-15) — all findings fixed same
   day.** Full detail in `status.md`. Summary: `Users.AuthToken` widened
