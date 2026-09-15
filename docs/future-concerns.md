@@ -444,6 +444,50 @@ deferred** that carry real risk if ignored too long.
     energy-demand-by-category table.**~~ Done 2026-09-14 — see `status.md`
     and the Resolved entry below.
 
+28. ~~**Third full bug-hunting pass (2026-09-15), critical/high/medium
+    findings fixed same day**: an array-injection login/forgot-password
+    vulnerability, missing email format validation on `Users.Email`,
+    non-functional "Remember me", a Google sign-in that hung forever on
+    popup-close/denial, the auth-loading-flash fix from the second pass
+    never reaching `swales-designer`, missing double-submit guards on
+    `swales-services` auth pages, a too-tight shared axios timeout, and no
+    explicit Vercel function duration.~~ Done 2026-09-15 — see `status.md`
+    and the Resolved entry below. **Deliberately deferred, Low severity**:
+    a `pdfjs-dist` major-version bump (regression risk without a full PDF
+    QA pass), a fragile exact-string error match in
+    `AccountDetailsModal.jsx` (needs a backend error-code contract, not
+    just a frontend tweak), and the scattered blog content-corruption
+    residue (gibberish text, leftover template markers, malformed
+    headings, affiliate-voice content, zero-width-character corruption)
+    across roughly 9 of the now-478 blog posts — the first two bug hunts'
+    blog cleanups were targeted at specific already-known posts, but a
+    full scan of all 478 for this class of defect hasn't been done and is
+    sized as its own task, not a bug-hunt add-on.
+
+29. **`pdfjs-dist` is on `^3.11.174`, several major versions behind.** —
+    *Severity: Low.* Flagged in the 2026-09-15 third bug hunt. Not bumped
+    same-session because a major-version jump in a PDF-rendering library
+    routinely changes worker setup / API shape and needs a real PDF
+    upload/render QA pass to confirm nothing regresses — a bad bump here
+    breaks the upload feature outright, worse than staying a few versions
+    behind. Do alongside, not instead of, manual PDF-upload testing.
+
+30. **`AccountDetailsModal.jsx`'s change-password error handling matches
+    the backend's error message by exact string** (`"Incorrect current
+    password"`) **to decide whether to show a field-level error.** —
+    *Severity: Low.* Flagged in the 2026-09-15 third bug hunt. Works today,
+    but silently degrades to a generic banner (not a crash) the moment
+    that backend string is ever reworded. The real fix is a stable error
+    `code` field from `authController.js`'s `changePassword` (it currently
+    only returns 400 for two different failures — wrong current password
+    vs. a weak new password — distinguishable only by message text), not
+    a frontend-only patch.
+
+31. **Blog content-corruption residue not yet scanned for** — see item 28's
+    deferred note above. *Severity: Low/Medium depending on which post a
+    visitor lands on* — brand-impersonation content and fake product
+    guarantees are the more serious end of this, not just typos.
+
 ---
 
 ## Resolved
@@ -557,3 +601,43 @@ deferred** that carry real risk if ignored too long.
   had off-topic/brand-impersonation content removed (same defect class
   as the earlier pest-control-post fix, found to recur more widely on
   a broader sample).
+
+- **Third full bug-hunting pass (2026-09-15) — critical/high/medium
+  findings fixed same day.** Full detail in `status.md`. Most notable:
+  `authController.js`'s `register`/`login`/`forgotPassword`/
+  `resendVerification` accepted a non-string `email` (e.g. a JSON array)
+  straight through `normalizeEmail()` into a Sequelize `where` clause,
+  which compiles an array value into `IN (...)` — against `login` this
+  let one request test a password against a batch of candidate emails
+  (defeating the per-IP rate limiter's intent), and against
+  `forgotPassword` it matched a victim's real account, minted them a
+  valid reset token, and mailed that token to every address in the
+  attacker-supplied array, victim included — a real account-takeover
+  path. Fixed by requiring `utils/emailFormat.js`'s existing
+  `isValidEmailFormat()` (already used by `subscribeController.js`) on
+  all four endpoints, which also closes the separate "no format
+  validation on `Users.Email`" gap in the same change. `vercel.json`
+  gained an explicit `maxDuration: 60` (was relying on Vercel's 10s
+  default, which register/forgotPassword's synchronous email-send could
+  plausibly exceed under a slow Resend response, and a near-100-page PDF
+  upload almost certainly could). `swales-services`: "Remember me" was
+  fully inert — `loginUser()` in `authService.js` dropped the parameter
+  entirely, and the checkbox was uncontrolled (`Input.jsx` only ever
+  forwarded `value`, not `checked`) — both fixed, plus double-submit
+  guards added to login/signup/forgot-password/reset-password (the
+  `AccountDetailsModal.jsx` pattern hadn't been carried to the main auth
+  pages), plus the shared axios instance's timeout raised from 5s to 15s
+  (too tight for the same synchronous-email-send endpoints above).
+  `swales-designer`: `GoogleLogin.tsx` had no path back from "Signing
+  in..." if the user closed the popup or denied consent — no message
+  ever arrives in that case, so nothing reset `isLoading` — fixed with a
+  `popup.closed` poll; and the second pass's auth-loading-flash fix
+  (gate rendering on `AuthContext`'s `isLoading`, not just `user`) had
+  only ever reached `swales-services` — `swales-designer`'s `Header.tsx`,
+  `MobileHeader.tsx`, `TopBar.tsx`, and `AllGardensModal.tsx` all still
+  showed a Login/Sign-Up (or logged-out-state) flash on every cold load,
+  fixed the same way. Deliberately deferred (Low severity, see the Open
+  list items 29-31 above): a `pdfjs-dist` major-version bump, a fragile
+  exact-string error match in `AccountDetailsModal.jsx`, and a full scan
+  of all 478 blog posts for the content-corruption defect class (only
+  ~9 posts' worth of symptoms were identified this pass, not fixed).
