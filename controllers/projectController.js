@@ -190,7 +190,7 @@ exports.getProjectById = async (req, res) => {
 
 // ✅ MODIFIED: Update an existing project (now with thumbnail)
 exports.updateProject = async (req, res) => {
-  const { name, projectData, thumbnail } = req.body;
+  const { name, projectData, thumbnail, lastKnownUpdatedAt } = req.body;
   try {
     const project = await Project.findOne({
       where: {
@@ -201,6 +201,29 @@ exports.updateProject = async (req, res) => {
 
     if (!project) {
       return errorResponse(res, "Project not found", null, 404);
+    }
+
+    // Optimistic concurrency guard: without this, whichever save lands
+    // last silently wins and discards the other one with no error to
+    // either side - a real risk for the same project open in two tabs, or
+    // a stale retried save landing after a newer one already succeeded.
+    // The client sends back the DateLastUpdated it last saw (from load or
+    // its own previous save response); if that no longer matches what's
+    // actually in the DB, someone else's save happened in between, so
+    // reject instead of overwriting it. Omitted entirely (older/other
+    // clients) skips the check - opt-in, not a hard requirement.
+    if (
+      lastKnownUpdatedAt &&
+      project.DateLastUpdated &&
+      new Date(lastKnownUpdatedAt).getTime() !==
+        new Date(project.DateLastUpdated).getTime()
+    ) {
+      return errorResponse(
+        res,
+        "This garden was updated elsewhere since you last loaded it. Reload it before saving again to avoid overwriting those changes.",
+        null,
+        409,
+      );
     }
 
     // Note: This simple implementation doesn't delete the old thumbnail.

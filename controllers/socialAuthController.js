@@ -41,6 +41,10 @@ exports.GoogleSignIn = async (req, res) => {
     // user into their existing one.
     const email = normalizeEmail(payload.email);
     const firstName = payload.given_name || payload.name || "";
+    // Google's id_token separates given_name/family_name whenever it has
+    // both on file - only falls back to "" (never firstName) when Google
+    // genuinely has no surname on the account, so we don't fabricate one.
+    const lastName = payload.family_name || "";
 
     let targetUser = null;
 
@@ -69,7 +73,7 @@ exports.GoogleSignIn = async (req, res) => {
       // 2. If user doesn't exist, create them
       targetUser = await User.create({
         FirstName: firstName,
-        LastName: firstName, // Google often provides full name as one string, or you can split it
+        LastName: lastName,
         Email: email,
         PasswordHash: null,
         PasswordSalt: null,
