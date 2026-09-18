@@ -341,7 +341,7 @@ exports.updateProfile = async (req, res) => {
       {
         FirstName: firstName,
         LastName: lastName,
-        DateOfBirth: dateOfBirth,
+        dateOfBirth: dateOfBirth,
         DateLastUpdated: new Date(),
       },
       { where: { UserId: user.UserId } },
@@ -368,7 +368,7 @@ exports.updateProfile = async (req, res) => {
     successResponse(res, "Profile updated successfully", {
       firstName: updatedUser.FirstName,
       lastName: updatedUser.LastName,
-      dateOfBirth: updatedUser.DateOfBirth,
+      dateOfBirth: updatedUser.dateOfBirth,
       accessToken: newToken, // <--- SEND NEW TOKEN
     });
   } catch (error) {
