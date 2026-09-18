@@ -307,15 +307,50 @@ deferred** that carry real risk if ignored too long.
     *Severity: Low.* Omar's own content task, not a code fix — flagged
     2026-09-13 after the ~53-post batch found uncommitted and shipped the
     same day (see `status.md`'s 2026-09-13 entry). `content/blog/` current
-    total is 242 posts (243 minus the one pulled below). Which specific
-    subset counts as the "+80" still needing finishing wasn't specified
-    here — Omar tracks that himself. Once the remaining posts are done,
-    they need the same treatment as the last batch: commit + push to
-    `swales-services` `main` (no PR required for this repo) to actually go
-    live.
+    total is **236 posts** (was 242 as of 2026-09-13; 6 more deleted since
+    across two passes — 3 on 2026-09-15, 3 more on 2026-09-18, see the
+    deleted list below). Which specific subset counts as the "+80" still
+    needing finishing wasn't specified here — Omar tracks that himself,
+    but **any count/list Omar is working from should now exclude the
+    deleted slugs below** — they no longer exist in `content/blog/`, so
+    they can't be "finished." Once the remaining posts are done, they need the same
+    treatment as the last batch: commit + push to `swales-services` `main`
+    (no PR required for this repo) to actually go live.
 
-    **Already checked and fixed, 2026-09-13 — skip these two when doing
-    the +80 pass, they're done:**
+    **Deleted entirely for naming/impersonating a real or fake commercial
+    business** (own subcategory of the pattern below — these don't just
+    have quality issues, they present the post as if written by, or
+    advertising, an actual company):
+    - **`achieve-effective-results-pest-control-now.md`** — deleted
+      2026-09-13. Written in first person as an unrelated company
+      ("Effective Results Pest Controls," "180-day money-back guarantee"),
+      nothing about permaculture/land analysis. Its 2 images deleted too.
+    - **`flowers-hawaii.md`** — deleted 2026-09-18 (data-trust audit). Its
+      FAQ section was written in first person as an actual Honolulu
+      florist business ("As a real local florist in Honolulu... Our very
+      best drivers deliver..."), plus funeral-flower upsell copy — same
+      defect class as the already-deleted `flowers-costco.md` below. 5
+      images deleted too.
+    - **`ultimate-guide-chicken-coop-automatic-door.md`** — deleted
+      2026-09-18. Previously flagged 2026-09-13 as a "borderline case...
+      left as-is" (see below); on closer read it's affiliate-review copy
+      for a fabricated product ("the Smart Autodoor," specific fake specs,
+      an explicit "Final Verdict from an Affiliate Perspective" section)
+      plus a second invented product "available on the Amazon store," and
+      the literal leftover generation marker `(Compiled Information)`
+      appears 14 times, unfilled. 2 images deleted too.
+    - **`chicken-coop-plastic-vs-wood.md`** — deleted 2026-09-18.
+      Repeatedly promotes real commercial brands (Omlet's "Eglu Go"/"Eglu
+      Cube," "Smiths Sectional Buildings") as "our top pick" — undisclosed
+      advertising, same pattern as the already-deleted windbreaker/
+      Stutterheim post below. 5 images deleted too.
+    - *(Already deleted 2026-09-15, same pattern, listed here for one
+      complete list):* **`flowers-costco.md`** (named real retailer
+      Costco) and **`enhance-your-garden-with-a-designer-windbreaker.md`**
+      (confused garden windbreaks with jacket brand Stutterheim throughout).
+
+    **Already checked and fixed in place (not deleted), 2026-09-13 — skip
+    when doing the +80 pass, it's done:**
     - **`avoid-these-bad-companion-plants-for-pumpkins.md`** — the
       "Recommended Seed Suppliers" section had 5 literal unfilled
       `[Insert your own talking point]` placeholder bullets, live on the
@@ -327,27 +362,17 @@ deferred** that carry real risk if ignored too long.
       answer addressing the actual horticultural question (cross-
       pollination affects next year's saved seed, not this season's fruit
       flavor).
-    - **`achieve-effective-results-pest-control-now.md`** — **deleted
-      entirely**, not fixed in place. The whole post was written in first
-      person as a different, unrelated company ("Effective Results Pest
-      Controls" — "we are a reliable and professional pest control
-      company," a "180-day money-back guarantee," etc.), with nothing
-      about permaculture, land analysis, or Swales — looked like
-      mismatched content from a bulk-generation batch that landed on the
-      wrong site. Its two images (`achieve-effective-results-pest-
-      control-now-hero.jpg`, `achieve-effective-results-pest-control-
-      now-2.jpg`) were deleted too; nothing else in the codebase
-      referenced the slug.
 
-    **Not yet checked**: the remaining ~241 posts were only scanned for
-    these two specific patterns (placeholder brackets, off-brand "we are
-    a company" language) via a targeted grep pass, not read individually
-    — other, differently-shaped problems may still exist. One borderline
-    case noted but left as-is: `ultimate-guide-chicken-coop-automatic-
-    door.md` recommends a specific "Smart Autodoor" product with
-    unverified claims (180-day money-back guarantee) — on-topic and not
-    obviously broken like the two above, but the product claim itself
-    hasn't been verified as real.
+    **Not yet checked**: a 2026-09-18 data-trust audit sampled a further
+    ~28 posts (beyond the ~40 sampled 2026-09-15) and found the 2 deletions
+    above plus several not-yet-actioned issues — see `status.md`'s
+    2026-09-18 entry for the full list (dangling table/list references in
+    at least 5 posts, unsourced medical claims in 2 posts, misc corruption/
+    typos in ~6 posts). Combined across all passes, roughly **211 of 236
+    posts (~89%) remain entirely unchecked** — the full systematic scan
+    this item has flagged since 2026-09-13 is still the only way to bound
+    this risk with confidence, and each new partial sample keeps finding
+    more of the same defect families rather than tapering off.
 
 23. **`/courses` links to third-party sites Swales doesn't control.** —
     *Severity: Low.* Flagged 2026-09-14 when the page shipped
