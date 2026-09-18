@@ -75,13 +75,43 @@ pattern. Verified live: dispatching `visibilitychange` while signed out
 triggered a second logged `/auth/me` 401, confirming the listener fires;
 production build stayed clean.
 
+**All three Medium items actioned, 2026-09-18** (Omar said go ahead):
+`swales-backend` (branch `fix/medium-severity-data-trust-items-2026-09-18`,
+PR not yet merged) — `socialAuthController.js`'s Google sign-in wrote
+`LastName: firstName` for new accounts, duplicating the given name into
+the surname field; now uses Google's real `payload.family_name` (falling
+back to `""`, never a fabricated duplicate, when Google genuinely has no
+surname on file). Same branch — `projectController.js`'s `updateProject`
+was an unguarded last-write-wins overwrite; added an opt-in optimistic-
+concurrency check (client sends back the `DateLastUpdated` it last saw;
+a mismatch means someone else saved in between, so the request now gets a
+409 instead of silently overwriting). `swales-designer` (`main`,
+`182e1b7`) — wired both save paths (`app/page.tsx`, `app/share/[uuid]/
+page.tsx`, which duplicates the same save logic) to track and send
+`lastKnownUpdatedAt`, and to show a distinct "updated elsewhere - reload
+before saving again" message on a 409 instead of the generic save-failed
+error. `swales-services` (`main`, `31f4d3d`) — fixed 6 blog posts in
+place (not deleted, real salvageable content): `comfrey-plants.md`
+(garbled sentence), `wind-energy-systems-understanding-parts-and-
+power.md` (leftover `Keywords:` SEO artifact), `seed-bank-101-a-
+comprehensive-guide.md` (duplicated paragraph), `recycle-magazines-can-
+magazine-be-recycled.md` (grammar corruption), `lime-flower.md` (merged
+duplicate cons sections, rewrote an affiliate-sales-voice section into
+neutral editorial content), and `courses-in-permaculture.md` (unfilled
+"Course 1"/"Course 2" placeholders replaced with real course names, a
+"themaculture" typo, and — bonus, since it was in the same file — its
+dangling "table below compares..." reference replaced with a real table,
+closing 1 of the 6 dangling-table posts found). All 3 repos'
+production builds re-verified clean after their respective changes;
+`swales-designer` also passed a direct `tsc --noEmit` check on the two
+touched files.
+
 **Not yet actioned — awaiting Omar's go-ahead per his "list before you
-change anything" instruction**: the remaining Medium/Low items above
-(Google-sign-in surname mis-mapping, unguarded `updateProject` overwrite,
-misc blog corruption, `ProjectData` size-cap inconsistency, `floodRisk`
-cache-TTL order-dependency, designer ID-collision risk), the two blog
-High-severity content items (dangling table/list references, unsourced
-medical claims), plus the ~211-of-236-posts-still-unchecked blog-corpus
+change anything" instruction**: the remaining Low items (`ProjectData`
+size-cap inconsistency, `floodRisk` cache-TTL order-dependency, designer
+ID-collision risk), the two blog High-severity content items (dangling
+table/list references in 5 remaining posts, unsourced medical claims in 2
+posts), plus the ~211-of-236-posts-still-unchecked blog-corpus
 gap (`future-concerns.md` item 22).)
 
 2026-09-15 (**Third full bug-hunting pass, critical/high/medium findings
