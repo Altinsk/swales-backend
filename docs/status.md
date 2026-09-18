@@ -7,6 +7,59 @@ left off."
 
 ## Last updated
 
+2026-09-18 (**Deep data-trust audit across all 3 repos, Critical findings
+in progress — first fix landed: 3 more blog posts naming/impersonating a
+real business deleted.** Omar asked for a careful, important audit
+specifically of data-we-collect (input validation/storage integrity) and
+data-we-provide (analysis-engine correctness, published-content accuracy)
+— the app's credibility as a "trusted source of information" was the
+explicit framing, not just a generic bug hunt. Ran 4 parallel read-only
+audits (backend data collection, analysis-engine correctness, blog content
+accuracy, designer canvas data round-trip) and reported every finding
+before changing anything, per Omar's explicit instruction. Full findings
+list (not duplicated here) covers: Critical — 3 blog posts naming/
+impersonating a real business; High — a backend `updateProfile` silent-
+data-loss bug (date-of-birth), a `swales-designer` stale cross-tab auth-
+identity gap, dangling table/list references and unsourced medical claims
+in the blog; Medium — a Google-sign-in surname mis-mapping bug, an
+unguarded last-write-wins `updateProject` overwrite, misc blog corruption;
+Low — a `swales-backend` `ProjectData` size-cap inconsistency, a
+`floodRisk` cache-TTL order-dependency in `swales-services`, a theoretical
+ID-collision risk in `swales-designer`. Analysis-engine correctness itself
+came back clean — formulas hand-verified, no silent-fallback-as-fact
+patterns found, the two historically-flagged drift bugs stay fixed.
+
+**Correction to prior tracking**: the blog corpus is 239 posts (now 236
+after this session's deletions), not "470+/478" as earlier entries below
+said — that figure double-counted a `.next/standalone` build-cache mirror
+of the same files as separate content. Memory updated to match.
+
+**First Critical item actioned, 2026-09-18** (`swales-services`, direct to
+`main` per this repo's no-PR-required convention): deleted 3 blog posts
+that named or impersonated a real commercial business, plus their images —
+`flowers-hawaii.md` (written in first person as an actual Honolulu florist
+business, funeral-flower upsell copy), `ultimate-guide-chicken-coop-
+automatic-door.md` (affiliate-review copy for a fabricated "Smart
+Autodoor" product plus a second invented product "available on the Amazon
+store," 14 unfilled `(Compiled Information)` template-leftover markers —
+this one had been flagged 2026-09-13 as a "borderline case... left as-is,"
+now resolved by deletion instead), and `chicken-coop-plastic-vs-wood.md`
+(repeatedly promotes real brands Omlet's "Eglu Go"/"Eglu Cube" and "Smiths
+Sectional Buildings" as "our top pick" — undisclosed advertising). Same
+defect family as the already-deleted `flowers-costco.md` and windbreaker/
+Stutterheim post from 2026-09-15. Full production build re-verified clean
+(`exit 0`, all pages generated) after removal — no code referenced these
+slugs, confirmed by repo-wide grep before deleting. `future-concerns.md`
+item 22 updated with the complete deleted-posts list (all 6 across both
+passes) and the corrected post count, so the "+80 pass" Omar tracks
+himself doesn't include already-deleted slugs.
+
+**Not yet actioned — awaiting Omar's go-ahead per his "list before you
+change anything" instruction**: the remaining Critical/High/Medium/Low
+items above, plus the ~211-of-236-posts-still-unchecked blog-corpus gap
+(`future-concerns.md` item 22). Next up, per Omar: review the High-severity
+findings together before touching any code.)
+
 2026-09-15 (**Third full bug-hunting pass, critical/high/medium findings
 fixed same day.** Omar asked for another priority-ordered pass. Ran it and
 fixed everything found, in priority order.
