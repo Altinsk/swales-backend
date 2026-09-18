@@ -363,16 +363,36 @@ deferred** that carry real risk if ignored too long.
       pollination affects next year's saved seed, not this season's fruit
       flavor).
 
-    **Not yet checked**: a 2026-09-18 data-trust audit sampled a further
-    ~28 posts (beyond the ~40 sampled 2026-09-15) and found the 2 deletions
-    above plus several not-yet-actioned issues — see `status.md`'s
-    2026-09-18 entry for the full list (dangling table/list references in
-    at least 5 posts, unsourced medical claims in 2 posts, misc corruption/
-    typos in ~6 posts). Combined across all passes, roughly **211 of 236
-    posts (~89%) remain entirely unchecked** — the full systematic scan
-    this item has flagged since 2026-09-13 is still the only way to bound
-    this risk with confidence, and each new partial sample keeps finding
-    more of the same defect families rather than tapering off.
+    **Also fixed in place, 2026-09-18** (same data-trust audit, Medium-
+    severity content issues): `comfrey-plants.md` (garbled sentence),
+    `wind-energy-systems-understanding-parts-and-power.md` (leftover
+    "Keywords: ..." SEO artifact), `seed-bank-101-a-comprehensive-guide.md`
+    (duplicated paragraph), `recycle-magazines-can-magazine-be-recycled.md`
+    (grammar corruption), `lime-flower.md` (merged two near-duplicate
+    cons/side-effects sections, rewrote an affiliate-sales-voice "Final
+    Verdict" section into neutral editorial content), and
+    `courses-in-permaculture.md` (unfilled "Course 1"/"Course 2" placeholder
+    headers replaced with the real course names, a "themaculture" typo, and
+    a dangling "table below compares..." reference replaced with a real
+    table — this last one also closes 1 of the 5 dangling-table posts noted
+    below).
+
+    **Not yet checked/fixed**: a 2026-09-18 data-trust audit sampled a
+    further ~28 posts (beyond the ~40 sampled 2026-09-15) and found the 2
+    deletions and 6 in-place fixes above, plus not-yet-actioned issues —
+    see `status.md`'s 2026-09-18 entry for the full list: dangling
+    table/list references remain in 5 posts (`comfrey-plants.md` — a
+    separate dangling-table issue at a different line than the garbled-
+    text sentence fixed above, `jujube-food.md`, `healing-herbs-book.md`,
+    `edible-weeds.md`, `essential-oils-bed-bugs.md`), and unsourced medical
+    claims remain in 2 posts (`essential-oils-bed-bugs.md`,
+    `essential-oils-ear-infection.md`). Fixing already-sampled posts
+    doesn't change how many are still unchecked: combined across all
+    passes, roughly **211 of 236 posts (~89%) remain entirely unread** —
+    the full systematic scan this item has flagged since 2026-09-13 is
+    still the only way to bound this risk with confidence, and each new
+    partial sample keeps finding more of the same defect families rather
+    than tapering off.
 
 23. **`/courses` links to third-party sites Swales doesn't control.** —
     *Severity: Low.* Flagged 2026-09-14 when the page shipped
